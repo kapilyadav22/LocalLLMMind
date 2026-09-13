@@ -11,6 +11,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Native_API-000000?logo=ollama&logoColor=white)](https://ollama.com/)
 [![Vision Ready](https://img.shields.io/badge/Vision-Multimodal_Ready-06b6d4?logo=eye&logoColor=white)](#-multimodal-vision-support)
 [![DeepSeek-R1](https://img.shields.io/badge/DeepSeek--R1-Reasoning_Ready-8b5cf6)](#-deepseek-r1--reasoning-model-support)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](#-docker-deployment)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 </div>
@@ -214,6 +215,56 @@ Open [http://localhost:5173/](http://localhost:5173/) in your browser.
 npm run build
 npm run preview
 ```
+
+---
+
+## 🐳 Docker Deployment
+
+LocalMind can be run anywhere via Docker without needing Node.js installed on your host system.
+
+### Option 1: Docker Compose (Recommended)
+
+Run LocalMind connected to Ollama running on your host machine:
+
+```bash
+# Start LocalMind on http://localhost:3000
+docker compose up -d
+```
+
+> **Note**: The container automatically connects to host Ollama at `http://host.docker.internal:11434` via `extra_hosts`.
+
+#### All-in-One Stack (LocalMind + Ollama in Docker):
+If you don't have Ollama installed on your host and want Docker to manage both:
+
+```bash
+docker compose --profile with-ollama up -d
+```
+
+### Option 2: Standalone Docker Run
+
+Build and run the lightweight container directly:
+
+```bash
+# 1. Build the production image
+docker build -t localmind .
+
+# 2. Run the container (connecting to host Ollama)
+docker run -d \
+  -p 3000:80 \
+  --add-host=host.docker.internal:host-gateway \
+  -e OLLAMA_URL=http://host.docker.internal:11434 \
+  --name localmind \
+  localmind
+```
+
+Access the workstation at **[http://localhost:3000](http://localhost:3000)**.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `80` | Internal Nginx listening port |
+| `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama API endpoint to reverse proxy for streaming |
 
 ---
 

@@ -1,0 +1,45 @@
+services:
+  # LocalMind Desktop AI Workstation
+  localmind:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: localmind:latest
+    container_name: localmind-app
+    ports:
+      - "3000:80"
+    environment:
+      - PORT=80
+      - OLLAMA_URL=http://host.docker.internal:11434
+    extra_hosts:
+      # Allows the container to communicate with Ollama running natively on the host machine
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Optional: Ollama in Docker (Run with: docker compose --profile with-ollama up -d)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: localmind-ollama
+    profiles: ["with-ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # Uncomment the block below to enable NVIDIA GPU acceleration in Docker:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  ollama_data:
+    name: localmind_ollama_data
