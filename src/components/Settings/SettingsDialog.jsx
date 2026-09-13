@@ -21,6 +21,8 @@ import {
   InputAdornment,
   List,
   ListItem,
+  ListItemButton,
+  ListItemIcon,
   ListItemText,
   Tooltip,
   useMediaQuery,
@@ -42,7 +44,6 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import GetAppIcon from '@mui/icons-material/GetApp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import PersonIcon from '@mui/icons-material/Person';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
@@ -50,7 +51,6 @@ import SyncIcon from '@mui/icons-material/Sync';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import FolderIcon from '@mui/icons-material/Folder';
 import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
-import DeveloperBadge from '../common/DeveloperBadge';
 import ShortcutsManager from '../common/ShortcutsManager';
 import { showCustomAlert, showCustomConfirm } from '../../utils/dialogService';
 import { checkConnection, fetchModels, pullModel, deleteModel } from '../../services/ollamaService';
@@ -67,8 +67,17 @@ import {
 } from '../../utils/fileSystemStorage';
 import { showToast } from '../../utils/toast';
 
+const SETTINGS_SECTIONS = [
+  { id: 0, label: 'Connection', icon: LinkIcon, description: 'Ollama server endpoint & connectivity test' },
+  { id: 1, label: 'Parameters', icon: TuneIcon, description: 'Model generation parameters & default prompt' },
+  { id: 2, label: 'Models', icon: SmartToyIcon, description: 'Installed models & library downloads' },
+  { id: 3, label: 'Shortcuts', icon: KeyboardIcon, description: 'Custom keyboard shortcuts & hotkey actions' },
+  { id: 4, label: 'Appearance', icon: PaletteIcon, description: 'Color theme & visual appearance' },
+  { id: 5, label: 'Storage & Memory', icon: StorageIcon, description: 'Local chat persistence, backups, & data management' },
+];
+
 function TabPanel({ children, value, index }) {
-  return value === index ? <Box sx={{ py: 3 }}>{children}</Box> : null;
+  return value === index ? <Box sx={{ py: 0.5 }}>{children}</Box> : null;
 }
 
 export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle, initialTab = 0 }) {
@@ -379,12 +388,14 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
     return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1e6).toFixed(0)} MB`;
   };
 
+  const activeSection = SETTINGS_SECTIONS.find((s) => s.id === tab) || SETTINGS_SECTIONS[0];
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
       fullScreen={isMobile}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       slotProps={{
         paper: {
@@ -393,55 +404,146 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
             borderRadius: isMobile ? 0 : 4,
             border: '1px solid',
             borderColor: 'divider',
+            height: isMobile ? '100%' : 660,
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
           },
         },
       }}
     >
-      <DialogTitle
-        component="div"
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          pb: 0,
-        }}
-      >
-        <Typography variant="h6" component="span" sx={{ fontWeight: 700 }}>
-          Settings
-        </Typography>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-
-      <Box sx={{ px: 3 }}>
-        <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          variant="scrollable"
-          scrollButtons="auto"
+      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Left Vertical Navigation Sidebar */}
+        <Box
           sx={{
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 0,
-              px: 2,
-            },
+            width: { xs: 68, sm: 220 },
+            flexShrink: 0,
+            bgcolor: alpha(theme.palette.background.default, 0.6),
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+            p: 2,
           }}
         >
-          <Tab icon={<LinkIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Connection" />
-          <Tab icon={<TuneIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Parameters" />
-          <Tab icon={<SmartToyIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Models" />
-          <Tab icon={<KeyboardIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Shortcuts" />
-          <Tab icon={<PaletteIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Appearance" />
-          <Tab icon={<StorageIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Storage & Memory" />
-          <Tab icon={<PersonIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Developer" />
-        </Tabs>
-      </Box>
+          {/* Header */}
+          <Box sx={{ mb: 2, px: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'primary.main',
+                }}
+              >
+                <TuneIcon sx={{ fontSize: 18 }} />
+              </Box>
+              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+                  Settings
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
+                  Workstation Preferences
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
 
-      <DialogContent sx={{ px: 3 }}>
-        {/* Connection Tab */}
-        <TabPanel value={tab} index={0}>
+          <Divider sx={{ mb: 1.5 }} />
+
+          {/* Vertical Menu List */}
+          <List disablePadding sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {SETTINGS_SECTIONS.map((sec) => {
+              const isSelected = tab === sec.id;
+              const IconComp = sec.icon;
+              return (
+                <ListItemButton
+                  key={sec.id}
+                  selected={isSelected}
+                  onClick={() => setTab(sec.id)}
+                  sx={{
+                    borderRadius: 2.5,
+                    px: { xs: 1, sm: 1.5 },
+                    py: 1,
+                    transition: 'all 0.15s ease',
+                    bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
+                    color: isSelected ? 'primary.main' : 'text.primary',
+                    '&:hover': {
+                      bgcolor: isSelected
+                        ? alpha(theme.palette.primary.main, 0.16)
+                        : alpha(theme.palette.text.primary, 0.04),
+                    },
+                    '&.Mui-selected': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                      color: 'primary.main',
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.16),
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: { xs: 'auto', sm: 30 },
+                      color: isSelected ? 'primary.main' : 'text.secondary',
+                      mr: { xs: 0, sm: 1 },
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <IconComp sx={{ fontSize: 19 }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={sec.label}
+                    primaryTypographyProps={{
+                      fontSize: '0.84rem',
+                      fontWeight: isSelected ? 700 : 500,
+                    }}
+                    sx={{ display: { xs: 'none', sm: 'block' } }}
+                  />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        </Box>
+
+        {/* Right Content Column */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Header with Title + Close */}
+          <Box
+            sx={{
+              px: 3,
+              py: 2,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.2 }}>
+                {activeSection?.label || 'Settings'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.74rem' }}>
+                {activeSection?.description}
+              </Typography>
+            </Box>
+            <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Scrollable Content */}
+          <DialogContent sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
+            {/* Connection Tab */}
+            <TabPanel value={tab} index={0}>
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
             Ollama Server URL
           </Typography>
@@ -1111,23 +1213,35 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
           </Box>
         </TabPanel>
 
-        {/* Developer / About Tab */}
-        <TabPanel value={tab} index={6}>
-          <DeveloperBadge variant="card" />
-        </TabPanel>
-      </DialogContent>
+          </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <DeveloperBadge variant="watermark" />
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button onClick={onClose} color="inherit">
-            Cancel
-          </Button>
-          <Button onClick={handleSave} variant="contained" disableElevation>
-            Save Settings
-          </Button>
+          {/* Clean Footer */}
+          <DialogActions
+            sx={{
+              px: 3,
+              py: 2,
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              bgcolor: alpha(theme.palette.background.default, 0.4),
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 1.5,
+            }}
+          >
+            <Button onClick={onClose} color="inherit" sx={{ textTransform: 'none', fontWeight: 600 }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              variant="contained"
+              disableElevation
+              sx={{ textTransform: 'none', fontWeight: 600, px: 2.5 }}
+            >
+              Save Settings
+            </Button>
+          </DialogActions>
         </Box>
-      </DialogActions>
+      </Box>
 
       {/* Confirmation Dialog for Clearing Conversations */}
       <Dialog
