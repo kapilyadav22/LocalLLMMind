@@ -34,6 +34,7 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import SportsMmaIcon from '@mui/icons-material/SportsMma';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import LanguageIcon from '@mui/icons-material/Language';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import Divider from '@mui/material/Divider';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
@@ -53,6 +54,7 @@ import { getAllPersonas } from '../../utils/personaStorage';
 import { performWebSearch, formatSearchContext } from '../../services/webSearchService';
 import { estimateConversationTokens } from '../../utils/documentUtils';
 import { showToast } from '../../utils/toast';
+import { exportConversationToPdf } from '../../utils/pdfExportUtils';
 import { v4 as uuidv4 } from 'uuid';
 
 // Format a message for Ollama /api/chat payload (including vision images and arena handling)
@@ -1099,6 +1101,24 @@ export default function ChatView() {
             <Tooltip title="Export as Markdown (.md)">
               <IconButton size="small" onClick={handleExportMarkdown} sx={{ color: 'text.secondary' }}>
                 <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Print / Export as PDF">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  if (activeConvo) {
+                    exportConversationToPdf(activeConvo);
+                    showToast('Opening PDF print preview...', 'info');
+                  }
+                }}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': { color: 'error.main' },
+                }}
+              >
+                <PictureAsPdfIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>

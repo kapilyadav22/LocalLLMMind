@@ -24,9 +24,11 @@ import TextSnippetIcon from '@mui/icons-material/TextSnippet';
 import DownloadIcon from '@mui/icons-material/Download';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { toPng } from 'html-to-image';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 import { showToast } from '../../utils/toast';
+import { exportConversationToPdf } from '../../utils/pdfExportUtils';
 
 export default function ShareChatDialog({ open, onClose, conversation }) {
   const theme = useTheme();
@@ -175,6 +177,17 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
     } catch (e) {
       console.error('Failed to export markdown:', e);
       showToast('Failed to export markdown', 'error');
+    }
+  };
+
+  // 6. Print / Save as PDF
+  const handleExportPdf = () => {
+    try {
+      exportConversationToPdf(conversation);
+      showToast('Opening PDF print preview...', 'info');
+    } catch (e) {
+      console.error('Failed to export PDF:', e);
+      showToast('Failed to export PDF', 'error');
     }
   };
 
@@ -397,11 +410,12 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             </Card>
           </Grid>
 
-          {/* Option 5: Save as Plain Text (.txt) */}
-          <Grid item xs={12}>
+          {/* Option 5: Print / Export as PDF */}
+          <Grid item xs={12} sm={6}>
             <Card
               variant="outlined"
               sx={{
+                height: '100%',
                 borderRadius: 2.5,
                 borderColor: 'divider',
                 transition: 'all 0.2s ease',
@@ -411,15 +425,44 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
                 },
               }}
             >
-              <CardActionArea onClick={handleSaveAsText} sx={{ p: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+              <CardActionArea onClick={handleExportPdf} sx={{ p: 2, height: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                  <PictureAsPdfIcon color="error" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Print / Export as PDF
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Clean, executive printable report with print-to-PDF formatting.
+                </Typography>
+              </CardActionArea>
+            </Card>
+          </Grid>
+
+          {/* Option 6: Save as Plain Text (.txt) */}
+          <Grid item xs={12} sm={6}>
+            <Card
+              variant="outlined"
+              sx={{
+                height: '100%',
+                borderRadius: 2.5,
+                borderColor: 'divider',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
+                },
+              }}
+            >
+              <CardActionArea onClick={handleSaveAsText} sx={{ p: 2, height: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                   <TextSnippetIcon color="primary" />
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Save as Plain Text (.txt)
                   </Typography>
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  Clean, unformatted text file suitable for any text editor or note-taking app.
+                  Unformatted text file for simple note-taking or archiving.
                 </Typography>
               </CardActionArea>
             </Card>
