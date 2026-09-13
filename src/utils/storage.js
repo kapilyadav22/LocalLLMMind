@@ -1,7 +1,9 @@
 const KEYS = {
   CONVERSATIONS: 'llm_ui_conversations',
+  PROJECTS: 'llm_ui_projects',
   SETTINGS: 'llm_ui_settings',
   THEME_MODE: 'llm_ui_theme_mode',
+  SHORTCUTS: 'llm_ui_shortcuts',
 };
 
 export function loadConversations() {
@@ -60,4 +62,46 @@ export function saveThemeMode(mode) {
   } catch (e) {
     console.error('Failed to save theme mode:', e);
   }
+}
+
+export function loadShortcuts() {
+  try {
+    const data = localStorage.getItem(KEYS.SHORTCUTS);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveShortcuts(shortcuts) {
+  try {
+    localStorage.setItem(KEYS.SHORTCUTS, JSON.stringify(shortcuts));
+  } catch (e) {
+    console.error('Failed to save shortcuts:', e);
+  }
+}
+
+export function loadProjects() {
+  try {
+    const data = localStorage.getItem(KEYS.PROJECTS);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveProjects(projects) {
+  try {
+    localStorage.setItem(KEYS.PROJECTS, JSON.stringify(projects));
+  } catch (e) {
+    console.error('Failed to save projects:', e);
+  }
+}
+
+let saveProjectsTimeout;
+export function saveProjectsDebounced(projects) {
+  if (saveProjectsTimeout) clearTimeout(saveProjectsTimeout);
+  saveProjectsTimeout = setTimeout(() => {
+    saveProjects(projects);
+  }, 800);
 }

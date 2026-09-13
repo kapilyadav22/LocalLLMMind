@@ -5,6 +5,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Chip,
   alpha,
   useTheme,
   Fade,
@@ -14,19 +15,24 @@ import SendIcon from '@mui/icons-material/Send';
 import StopCircleIcon from '@mui/icons-material/StopCircle';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ReplyIcon from '@mui/icons-material/Reply';
+import CloseIcon from '@mui/icons-material/Close';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import LanguageIcon from '@mui/icons-material/Language';
 import ModelSelector from '../common/ModelSelector';
-import { useChatStore } from '../../store/chatStore';
+import SlashCommandPopover from './SlashCommandPopover';
+import PromptLibraryDialog from './PromptLibraryDialog';
+import { useChatStore } from '../../store/chatContext';
 import { useVoiceInput } from '../../hooks/useAudio';
+import { DEVELOPER_NAME, APP_SHORT_NAME } from '../../constants/appConstants';
+import { loadAllPrompts } from '../../utils/promptStorage';
+import { processImageFile, formatImageSize } from '../../utils/imageUtils';
+import { isDocumentFile, readDocumentFile, formatDocumentsForPrompt } from '../../utils/documentUtils';
+import { showToast } from '../../utils/toast';
 
-const PROMPT_TEMPLATES = [
-  { command: '/summarize', label: 'Summarize text', text: 'Summarize the following text briefly and capture the key takeaways:\n\n' },
-  { command: '/refactor', label: 'Refactor code', text: 'Refactor the following code to make it cleaner, more efficient, and follow best practices:\n\n' },
-  { command: '/explain', label: 'Explain concept', text: 'Explain how the following code/concept works in simple terms:\n\n' },
-  { command: '/translate', label: 'Translate to English', text: 'Translate the following text to English:\n\n' },
-  { command: '/debug', label: 'Debug code', text: 'Identify any bugs, issues, or security flaws in the following code and provide fixes:\n\n' },
-];
-
-export default function MessageInput({ onSend, onStop, disabled }) {
+export default function MessageInput({ onSend, onStop, disabled, replyTo = null, onCancelReply = null }) {
   const [input, setInput] = useState('');
   const [interimText, setInterimText] = useState('');
   const inputRef = useRef(null);
@@ -34,6 +40,22 @@ export default function MessageInput({ onSend, onStop, disabled }) {
   const { state, getActiveConversation, dispatch } = useChatStore();
   const activeConvo = getActiveConversation();
   const currentModel = activeConvo?.model || state.settings.selectedModel || (state.models[0]?.name ?? '');
+
+  // Prompt library and slash command popover state
+  const [allPrompts, setAllPrompts] = useState(() => loadAllPrompts());
+  const [slashPopoverOpen, setSlashPopoverOpen] = useState(false);
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+
+  // Sync prompts on change/import
+  useEffect(() => {
+    const handlePromptsUpdated = () => {
+      setAllPrompts(loadAllPrompts());
+    };
+    window.addEventListener('localmind-prompts-updated', handlePromptsUpdated);
+    return () => window.removeEventListener('localmind-prompts-updated', handlePromptsUpdated);
+  }, []);
 
   // Voice input
   const {
@@ -55,6 +77,9 @@ export default function MessageInput({ onSend, onStop, disabled }) {
     continuous: true,
   });
   const [showMicError, setShowMicError] = useState(false);
+  const [attachedImages, setAttachedImages] = useState([]);
+  const [attachedDocuments, setAttachedDocuments] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (micError) {
@@ -62,48 +87,247 @@ export default function MessageInput({ onSend, onStop, disabled }) {
     }
   }, [micError]);
 
-  const filteredTemplates = useMemo(() => {
-    if (!input.startsWith('/') || input.includes(' ')) return [];
-    const query = input.toLowerCase();
-    return PROMPT_TEMPLATES.filter((t) => t.command.startsWith(query));
-  }, [input]);
+  // Handle files selection from file picker (images & documents)
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    const docFiles = files.filter((f) => isDocumentFile(f));
 
-  const handleSelectTemplate = (text) => {
-    setInput(text);
-    // Focus the input
-    if (inputRef.current) {
-      const textarea = inputRef.current.querySelector('textarea');
-      if (textarea) textarea.focus();
+    if (imageFiles.length > 0) {
+      try {
+        const processed = await Promise.all(imageFiles.map(processImageFile));
+        setAttachedImages((prev) => [...prev, ...processed]);
+      } catch (err) {
+        console.error('Failed to process image:', err);
+      }
+    }
+
+    if (docFiles.length > 0) {
+      try {
+        const processedDocs = await Promise.all(docFiles.map(readDocumentFile));
+        setAttachedDocuments((prev) => [...prev, ...processedDocs]);
+        showToast(`Attached ${processedDocs.length} document(s)`, 'info');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    e.target.value = '';
+  };
+
+  // Handle clipboard paste of images (e.g. Cmd+V screenshot)
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageFiles = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      try {
+        const processed = await Promise.all(imageFiles.map(processImageFile));
+        setAttachedImages((prev) => [...prev, ...processed]);
+      } catch (err) {
+        console.error('Failed to process pasted image:', err);
+      }
     }
   };
+
+  // Drag and drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer?.files || []);
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    const docFiles = files.filter((f) => isDocumentFile(f));
+
+    if (imageFiles.length > 0) {
+      try {
+        const processed = await Promise.all(imageFiles.map(processImageFile));
+        setAttachedImages((prev) => [...prev, ...processed]);
+      } catch (err) {
+        console.error('Failed to process dropped image:', err);
+      }
+    }
+
+    if (docFiles.length > 0) {
+      try {
+        const processedDocs = await Promise.all(docFiles.map(readDocumentFile));
+        setAttachedDocuments((prev) => [...prev, ...processedDocs]);
+        showToast(`Attached ${processedDocs.length} document(s)`, 'info');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  };
+
+  const handleRemoveImage = (id) => {
+    setAttachedImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleRemoveDocument = (id) => {
+    setAttachedDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  };
+
+  // Listen for template insertion triggered by keyboard shortcuts
+  useEffect(() => {
+    const handleInsert = (e) => {
+      if (e.detail?.text) {
+        setInput((prev) => (prev ? prev + '\n' + e.detail.text : e.detail.text));
+        setTimeout(() => {
+          const textarea = document.getElementById('chat-message-input');
+          textarea?.focus();
+        }, 50);
+      }
+    };
+    window.addEventListener('llm-insert-text', handleInsert);
+    return () => window.removeEventListener('llm-insert-text', handleInsert);
+  }, []);
+
+  // Match slash command at typing cursor: either beginning of input or line, e.g. "/ref"
+  const slashMatch = useMemo(() => {
+    const match = input.match(/(?:^|\n)\/([a-zA-Z0-9_-]*)$/);
+    if (!match) return null;
+    return {
+      query: match[1].toLowerCase(),
+      fullMatch: match[0],
+    };
+  }, [input]);
+
+  const slashMatchingPrompts = useMemo(() => {
+    if (!slashMatch) return [];
+    const q = slashMatch.query;
+    if (!q) return allPrompts;
+    return allPrompts.filter(
+      (p) =>
+        p.command.toLowerCase().includes(q) ||
+        p.title.toLowerCase().includes(q) ||
+        (p.category && p.category.toLowerCase().includes(q))
+    );
+  }, [slashMatch, allPrompts]);
+
+  // Keep slash popover open when typing a slash command
+  useEffect(() => {
+    if (slashMatch && slashMatchingPrompts.length > 0) {
+      setSlashPopoverOpen(true);
+      setSlashSelectedIndex(0);
+    } else {
+      setSlashPopoverOpen(false);
+    }
+  }, [slashMatch, slashMatchingPrompts.length]);
+
+  const handleSelectPrompt = (prompt) => {
+    if (!prompt) return;
+    if (slashMatch) {
+      const replaced = input.replace(/(?:^|\n)\/([a-zA-Z0-9_-]*)$/, (m) => {
+        return m.startsWith('\n') ? '\n' + prompt.template : prompt.template;
+      });
+      setInput(replaced);
+    } else {
+      setInput((prev) => (prev ? prev + '\n\n' + prompt.template : prompt.template));
+    }
+    setSlashPopoverOpen(false);
+    setPromptLibraryOpen(false);
+
+    // Focus input and move cursor to end
+    setTimeout(() => {
+      if (inputRef.current) {
+        const textarea = inputRef.current.querySelector('textarea');
+        if (textarea) {
+          textarea.focus();
+          textarea.selectionStart = textarea.value.length;
+          textarea.selectionEnd = textarea.value.length;
+        }
+      }
+    }, 50);
+  };
+
   const getPlaceholder = () => {
     if (isListening) return 'Listening… speak now';
     if (!state.connectionChecked) return 'Connecting to Ollama…';
     if (!state.isConnected) return '⚠ Ollama is not connected — check Settings';
     if (state.models.length === 0) return '⚠ No models found — pull a model first';
     if (!currentModel) return 'Select a model to start chatting…';
-    return 'Send a message…';
+    if (attachedDocuments.length > 0) return 'Ask a question about the attached document(s)…';
+    if (attachedImages.length > 0) return 'Ask a question about the attached image(s)…';
+    return 'Send a message (type / for commands, or drop images & files)…';
   };
 
   const isInputDisabled = !state.isConnected || state.models.length === 0 || !currentModel;
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if (!text || disabled || isInputDisabled) return;
+    if ((!text && attachedImages.length === 0 && attachedDocuments.length === 0) || disabled || isInputDisabled) return;
     // Stop listening if active
     if (isListening) toggleListening();
     setInterimText('');
-    onSend(text, currentModel);
+
+    let promptPayload = text;
+    if (replyTo) {
+      const quoteSnippet = (replyTo.content || '').substring(0, 150).replace(/\n+/g, ' ');
+      promptPayload = `> Replying to ${replyTo.role === 'user' ? 'User' : 'Assistant'}: "${quoteSnippet}..."\n\n${promptPayload}`;
+    }
+
+    if (attachedDocuments.length > 0) {
+      promptPayload = promptPayload + formatDocumentsForPrompt(attachedDocuments);
+    }
+
+    onSend(promptPayload, currentModel, attachedImages, { webSearch: webSearchEnabled });
     setInput('');
+    setAttachedImages([]);
+    setAttachedDocuments([]);
+    onCancelReply?.();
+
     // Reset textarea height
     if (inputRef.current) {
       const textarea = inputRef.current.querySelector('textarea');
       if (textarea) textarea.style.height = 'auto';
     }
-  }, [input, disabled, isInputDisabled, isListening, toggleListening, onSend, currentModel]);
+  }, [input, attachedImages, attachedDocuments, disabled, isInputDisabled, isListening, toggleListening, onSend, currentModel, replyTo, onCancelReply, webSearchEnabled]);
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Handle keyboard navigation inside the slash command popover
+    if (slashPopoverOpen && slashMatchingPrompts.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashSelectedIndex((prev) => (prev + 1) % slashMatchingPrompts.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashSelectedIndex((prev) => (prev - 1 + slashMatchingPrompts.length) % slashMatchingPrompts.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const selected = slashMatchingPrompts[slashSelectedIndex] || slashMatchingPrompts[0];
+        if (selected) {
+          handleSelectPrompt(selected);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSlashPopoverOpen(false);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) {
       e.preventDefault();
       handleSend();
     }
@@ -136,50 +360,6 @@ export default function MessageInput({ onSend, onStop, disabled }) {
         >
           {micError}
         </Alert>
-      )}
-
-      {/* Prompt Suggestions */}
-      {filteredTemplates.length > 0 && (
-        <Box
-          sx={{
-            mb: 1.5,
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: alpha(theme.palette.background.paper, 0.9),
-            backdropFilter: 'blur(10px)',
-            overflow: 'hidden',
-            boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`,
-            animation: 'fadeInUp 0.2s ease-out',
-          }}
-        >
-          {filteredTemplates.map((template) => (
-            <Box
-              key={template.command}
-              onClick={() => handleSelectTemplate(template.text)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                px: 2,
-                py: 1.25,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  '& .cmd-label': { color: 'primary.main' },
-                },
-              }}
-            >
-              <Typography variant="body2" className="cmd-label" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                {template.command}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {template.label}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
       )}
 
       {/* Voice recording indicator */}
@@ -235,17 +415,26 @@ export default function MessageInput({ onSend, onStop, disabled }) {
 
       <Box
         ref={inputRef}
+        onPaste={handlePaste}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         sx={{
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           borderRadius: 4,
           border: '1px solid',
-          borderColor: isListening
-            ? alpha(theme.palette.error.main, 0.4)
-            : isInputDisabled
-              ? alpha(theme.palette.error.main, 0.2)
-              : 'divider',
-          bgcolor: alpha(theme.palette.background.paper, 0.6),
+          borderColor: isDragging
+            ? 'primary.main'
+            : isListening
+              ? alpha(theme.palette.error.main, 0.4)
+              : isInputDisabled
+                ? alpha(theme.palette.error.main, 0.2)
+                : 'divider',
+          bgcolor: isDragging
+            ? alpha(theme.palette.primary.main, 0.05)
+            : alpha(theme.palette.background.paper, 0.6),
           backdropFilter: 'blur(10px)',
           transition: 'all 0.2s ease',
           opacity: isInputDisabled ? 0.7 : 1,
@@ -262,6 +451,189 @@ export default function MessageInput({ onSend, onStop, disabled }) {
           }),
         }}
       >
+        {/* Slash Command Autocomplete Popover */}
+        <SlashCommandPopover
+          open={slashPopoverOpen}
+          prompts={slashMatchingPrompts}
+          selectedIndex={slashSelectedIndex}
+          onSelect={handleSelectPrompt}
+        />
+        {/* Drag & Drop Visual Overlay */}
+        {isDragging && (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 4,
+              border: '2px dashed',
+              borderColor: 'primary.main',
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.5,
+              zIndex: 10,
+              pointerEvents: 'none',
+            }}
+          >
+            <AddPhotoAlternateIcon sx={{ fontSize: 26, color: 'primary.main' }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              Drop images or code documents here to attach
+            </Typography>
+          </Box>
+        )}
+
+        {/* Quote-Reply Preview Banner */}
+        {replyTo && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1.5,
+              mx: 2,
+              mt: 1.5,
+              mb: 0.5,
+              px: 1.5,
+              py: 0.75,
+              borderRadius: 2.5,
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              borderLeft: '3px solid',
+              borderColor: 'primary.main',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              <ReplyIcon sx={{ fontSize: 16, color: 'primary.main', transform: 'scaleX(-1)' }} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block' }}>
+                  Replying to {replyTo.role === 'user' ? 'You' : 'Assistant'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{ color: 'text.secondary', display: 'block', maxWidth: { xs: 220, sm: 460 } }}
+                >
+                  {(replyTo.content || '').replace(/\n+/g, ' ').substring(0, 100)}
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton size="small" onClick={onCancelReply} sx={{ p: 0.5, color: 'text.secondary' }}>
+              <CloseIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Box>
+        )}
+
+        {/* Attached Documents Chip Strip */}
+        {attachedDocuments.length > 0 && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              px: 2,
+              pt: 1.5,
+              pb: 0.5,
+            }}
+          >
+            {attachedDocuments.map((doc) => (
+              <Chip
+                key={doc.id}
+                icon={<InsertDriveFileIcon sx={{ fontSize: '15px !important', color: 'primary.main !important' }} />}
+                label={`${doc.name} (${doc.formattedSize})`}
+                onDelete={() => handleRemoveDocument(doc.id)}
+                size="small"
+                sx={{
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  border: '1px solid',
+                  borderColor: alpha(theme.palette.primary.main, 0.25),
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                }}
+              />
+            ))}
+          </Box>
+        )}
+
+        {/* Attached Images Thumbnail Strip */}
+        {attachedImages.length > 0 && (
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1.5,
+              px: 2,
+              pt: 1.75,
+              pb: 0.5,
+              overflowX: 'auto',
+              '&::-webkit-scrollbar': { height: 4 },
+              '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 2 },
+            }}
+          >
+            {attachedImages.map((img) => (
+              <Box
+                key={img.id}
+                sx={{
+                  position: 'relative',
+                  width: 64,
+                  height: 64,
+                  borderRadius: 2.5,
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                  transition: 'transform 0.15s ease',
+                  '&:hover': { transform: 'scale(1.03)' },
+                }}
+              >
+                <Box
+                  component="img"
+                  src={img.preview}
+                  alt={img.name}
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => handleRemoveImage(img.id)}
+                  sx={{
+                    position: 'absolute',
+                    top: 3,
+                    right: 3,
+                    width: 18,
+                    height: 18,
+                    p: 0,
+                    bgcolor: 'rgba(0,0,0,0.7)',
+                    color: '#fff',
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.9)' },
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 12 }} />
+                </IconButton>
+                {img.size && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      bgcolor: 'rgba(0,0,0,0.65)',
+                      color: '#fff',
+                      fontSize: '0.58rem',
+                      fontFamily: 'monospace',
+                      textAlign: 'center',
+                      py: 0.2,
+                    }}
+                  >
+                    {formatImageSize(img.size)}
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
+
         <TextField
           multiline
           maxRows={8}
@@ -274,6 +646,7 @@ export default function MessageInput({ onSend, onStop, disabled }) {
           variant="standard"
           slotProps={{
             input: {
+              id: 'chat-message-input',
               disableUnderline: true,
             },
           }}
@@ -314,34 +687,110 @@ export default function MessageInput({ onSend, onStop, disabled }) {
           />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {/* Live Web Search Grounding button */}
+            <Tooltip
+              title={
+                webSearchEnabled
+                  ? 'Live Web Search: ACTIVE (Queries web for real-time citations)'
+                  : 'Enable Live Web Search Grounding'
+              }
+            >
+              <IconButton
+                size="small"
+                onClick={() => setWebSearchEnabled((prev) => !prev)}
+                sx={{
+                  color: webSearchEnabled ? '#00e5ff' : 'text.secondary',
+                  bgcolor: webSearchEnabled ? alpha('#00e5ff', 0.14) : 'transparent',
+                  border: webSearchEnabled ? `1px solid ${alpha('#00e5ff', 0.45)}` : '1px solid transparent',
+                  '&:hover': {
+                    color: '#00e5ff',
+                    bgcolor: alpha('#00e5ff', 0.22),
+                  },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <LanguageIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            {/* Prompt Library & Slash Commands button */}
+            <Tooltip title="Prompt Library & Templates (/)">
+              <IconButton
+                size="small"
+                onClick={() => setPromptLibraryOpen(true)}
+                sx={{
+                  color: promptLibraryOpen ? 'primary.main' : 'text.secondary',
+                  bgcolor: promptLibraryOpen ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                  '&:hover': {
+                    color: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.15),
+                  },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <AutoAwesomeIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            {/* Attach Image or Document button */}
+            <Tooltip title="Attach images or documents (code, data, text)">
+              <span>
+                <IconButton
+                  component="label"
+                  size="small"
+                  disabled={isInputDisabled}
+                  sx={{
+                    color: (attachedImages.length > 0 || attachedDocuments.length > 0) ? 'primary.main' : 'text.secondary',
+                    bgcolor: (attachedImages.length > 0 || attachedDocuments.length > 0) ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                    '&:hover': {
+                      color: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.15),
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <AddPhotoAlternateIcon sx={{ fontSize: 20 }} />
+                  <input
+                    type="file"
+                    accept="image/*,.txt,.md,.markdown,.json,.csv,.sql,.py,.js,.jsx,.ts,.tsx,.html,.css,.sh,.yml,.yaml,.xml,.env,.rs,.go,.java,.c,.cpp"
+                    multiple
+                    hidden
+                    onChange={handleFileSelect}
+                  />
+                </IconButton>
+              </span>
+            </Tooltip>
+
             {/* Microphone button */}
             {isMicSupported && (
               <Tooltip title={isListening ? 'Stop listening' : 'Voice input'}>
-                <IconButton
-                  onClick={toggleListening}
-                  disabled={isInputDisabled}
-                  sx={{
-                    color: isListening ? '#fff' : 'text.secondary',
-                    bgcolor: isListening
-                      ? 'error.main'
-                      : 'transparent',
-                    '&:hover': {
+                <span>
+                  <IconButton
+                    onClick={toggleListening}
+                    disabled={isInputDisabled}
+                    sx={{
+                      color: isListening ? '#fff' : 'text.secondary',
                       bgcolor: isListening
-                        ? 'error.dark'
-                        : alpha(theme.palette.text.primary, 0.08),
-                    },
-                    transition: 'all 0.2s ease',
-                    ...(isListening && {
-                      animation: 'micPulse 2s ease-in-out infinite',
-                      '@keyframes micPulse': {
-                        '0%, 100%': { boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.4)}` },
-                        '50%': { boxShadow: `0 0 0 8px ${alpha(theme.palette.error.main, 0)}` },
+                        ? 'error.main'
+                        : 'transparent',
+                      '&:hover': {
+                        bgcolor: isListening
+                          ? 'error.dark'
+                          : alpha(theme.palette.text.primary, 0.08),
                       },
-                    }),
-                  }}
-                >
-                  {isListening ? <MicOffIcon sx={{ fontSize: 20 }} /> : <MicIcon sx={{ fontSize: 20 }} />}
-                </IconButton>
+                      transition: 'all 0.2s ease',
+                      ...(isListening && {
+                        animation: 'micPulse 2s ease-in-out infinite',
+                        '@keyframes micPulse': {
+                          '0%, 100%': { boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.4)}` },
+                          '50%': { boxShadow: `0 0 0 8px ${alpha(theme.palette.error.main, 0)}` },
+                        },
+                      }),
+                    }}
+                  >
+                    {isListening ? <MicOffIcon sx={{ fontSize: 20 }} /> : <MicIcon sx={{ fontSize: 20 }} />}
+                  </IconButton>
+                </span>
               </Tooltip>
             )}
 
@@ -366,14 +815,14 @@ export default function MessageInput({ onSend, onStop, disabled }) {
                 <span>
                   <IconButton
                     onClick={handleSend}
-                    disabled={!input.trim() || disabled || isInputDisabled}
+                    disabled={(!input.trim() && attachedImages.length === 0) || disabled || isInputDisabled}
                     sx={{
-                      color: input.trim() && !isInputDisabled ? '#fff' : 'text.secondary',
-                      bgcolor: input.trim() && !isInputDisabled
+                      color: (input.trim() || attachedImages.length > 0) && !isInputDisabled ? '#fff' : 'text.secondary',
+                      bgcolor: (input.trim() || attachedImages.length > 0) && !isInputDisabled
                         ? 'primary.main'
                         : 'transparent',
                       '&:hover': {
-                        bgcolor: input.trim() && !isInputDisabled
+                        bgcolor: (input.trim() || attachedImages.length > 0) && !isInputDisabled
                           ? 'primary.dark'
                           : alpha(theme.palette.primary.main, 0.1),
                       },
@@ -393,13 +842,24 @@ export default function MessageInput({ onSend, onStop, disabled }) {
         </Box>
       </Box>
 
-      <Box sx={{ textAlign: 'center', mt: 1 }}>
-        <Box
-          component="span"
-          sx={{ fontSize: '0.7rem', color: 'text.secondary', opacity: 0.6 }}
-        >
+      {/* Prompt Library Modal */}
+      <PromptLibraryDialog
+        open={promptLibraryOpen}
+        onClose={() => setPromptLibraryOpen(false)}
+        prompts={allPrompts}
+        onSelectPrompt={handleSelectPrompt}
+      />
+
+      <Box sx={{ textAlign: 'center', mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', opacity: 0.65 }}>
           LLM responses can be inaccurate. Verify important information.
-        </Box>
+        </Typography>
+        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', opacity: 0.4 }}>
+          •
+        </Typography>
+        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', opacity: 0.75, fontWeight: 500 }}>
+          {APP_SHORT_NAME} by {DEVELOPER_NAME}
+        </Typography>
       </Box>
     </Box>
   );

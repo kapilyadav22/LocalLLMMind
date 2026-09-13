@@ -154,8 +154,10 @@ export function useSpeechSynthesis() {
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
-    // Strip markdown formatting for cleaner speech
+    // Strip markdown formatting and <think> reasoning tags for cleaner speech
     const cleanText = text
+      .replace(/<think>[\s\S]*?<\/think>/g, ' ')   // Completed think tags
+      .replace(/<think>[\s\S]*$/g, ' ')            // Unclosed think tags
       .replace(/```[\s\S]*?```/g, ' code block ')  // Code blocks
       .replace(/`([^`]+)`/g, '$1')                  // Inline code
       .replace(/#{1,6}\s/g, '')                      // Headings

@@ -1,6 +1,5 @@
-import { Box, Typography, alpha, useTheme, Button, CircularProgress } from '@mui/material';
+import { Box, Typography, alpha, useTheme, CircularProgress } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined';
 import SpeedIcon from '@mui/icons-material/Speed';
 import CodeIcon from '@mui/icons-material/Code';
@@ -8,7 +7,10 @@ import SchoolIcon from '@mui/icons-material/School';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useChatStore } from '../../store/chatStore';
+import { useChatStore } from '../../store/chatContext';
+import { APP_NAME } from '../../constants/appConstants';
+import AppLogo from '../common/AppLogo';
+import DeveloperBadge from '../common/DeveloperBadge';
 
 const suggestions = [
   { icon: <ChatBubbleOutlineIcon />, text: 'Explain quantum computing in simple terms' },
@@ -222,6 +224,11 @@ export default function WelcomeScreen({ onSuggestionClick }) {
 
   const showSuggestions = state.isConnected && state.models.length > 0;
 
+  const activeConvo = state.conversations.find((c) => c.id === state.activeConversationId);
+  const activeProject = activeConvo?.projectId
+    ? state.projects?.find((p) => p.id === activeConvo.projectId)
+    : null;
+
   return (
     <Box
       sx={{
@@ -240,58 +247,72 @@ export default function WelcomeScreen({ onSuggestionClick }) {
       }}
     >
       {/* Logo / Hero */}
-      <Box
-        sx={{
-          position: 'relative',
-          mb: 4,
-        }}
-      >
+      <Box sx={{ mb: 3 }}>
+        <AppLogo size={72} glowing={true} showText={false} />
+      </Box>
+
+      {/* Active Project Pill if chat belongs to a project */}
+      {activeProject && (
         <Box
           sx={{
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)}, ${alpha(theme.palette.secondary.main, 0.2)})`,
-            border: '2px solid',
-            borderColor: state.isConnected
-              ? alpha(theme.palette.primary.main, 0.3)
-              : alpha(theme.palette.error.main, 0.3),
-            mx: 'auto',
-            animation: state.isConnected ? 'float 3s ease-in-out infinite' : 'none',
-            opacity: state.isConnected ? 1 : 0.6,
-            transition: 'all 0.3s ease',
-            '@keyframes float': {
-              '0%, 100%': { transform: 'translateY(0)' },
-              '50%': { transform: 'translateY(-8px)' },
-            },
+            gap: 1,
+            px: 2,
+            py: 0.65,
+            mb: 2,
+            borderRadius: 5,
+            bgcolor: alpha(activeProject.color || theme.palette.primary.main, 0.1),
+            border: '1px solid',
+            borderColor: alpha(activeProject.color || theme.palette.primary.main, 0.3),
+            animation: 'fadeIn 0.3s ease-out',
           }}
         >
-          <SmartToyIcon sx={{ fontSize: 40, color: state.isConnected ? 'primary.main' : 'text.secondary' }} />
+          <Box
+            sx={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              bgcolor: activeProject.color || '#6366f1',
+              boxShadow: `0 0 8px ${activeProject.color || '#6366f1'}`,
+            }}
+          />
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              color: activeProject.color || 'primary.main',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Project: {activeProject.name}
+          </Typography>
         </Box>
-      </Box>
+      )}
 
       <Typography
         variant="h4"
         sx={{
-          fontWeight: 700,
+          fontWeight: 800,
           mb: 1,
+          letterSpacing: '-0.02em',
           background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}
       >
-        Local LLM Chat
+        {APP_NAME}
       </Typography>
 
       <Typography
         variant="body1"
         color="text.secondary"
-        sx={{ mb: 4, maxWidth: 460 }}
+        sx={{ mb: 4, maxWidth: 500, lineHeight: 1.6 }}
       >
-        Chat with your locally running AI models. Private, fast, and fully under your control.
+        {activeProject
+          ? `Starting a new conversation in "${activeProject.name}". All context and discussions will be organized within this project.`
+          : 'Production-grade local AI workstation. 100% private, offline-ready, and lightning fast.'}
       </Typography>
 
       {/* Connection status card (shown when not connected / no models) */}
@@ -347,11 +368,14 @@ export default function WelcomeScreen({ onSuggestionClick }) {
         </>
       )}
 
-      <Box sx={{ mt: 4, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-        <AutoAwesomeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-        <Typography variant="caption" color="text.secondary">
-          Powered by Ollama · Models run 100% locally
-        </Typography>
+      <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <AutoAwesomeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+          <Typography variant="caption" color="text.secondary">
+            Powered by Ollama · Models run 100% locally
+          </Typography>
+        </Box>
+        <DeveloperBadge variant="watermark" />
       </Box>
     </Box>
   );

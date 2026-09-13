@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Box,
   Chip,
   Tooltip,
   CircularProgress,
@@ -8,14 +7,16 @@ import {
 import CircleIcon from '@mui/icons-material/Circle';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { checkConnection, fetchModels } from '../../services/ollamaService';
-import { useChatStore } from '../../store/chatStore';
+import { useChatStore } from '../../store/chatContext';
 
 export default function ConnectionStatus() {
   const { state, dispatch } = useChatStore();
   const [checking, setChecking] = useState(false);
+  const checkingRef = useRef(false);
 
   const runCheck = useCallback(async () => {
-    if (checking) return;
+    if (checkingRef.current) return;
+    checkingRef.current = true;
     setChecking(true);
     dispatch({ type: 'SET_CONNECTION_ERROR', payload: null });
 
@@ -47,17 +48,17 @@ export default function ConnectionStatus() {
       dispatch({ type: 'SET_CONNECTED', payload: false });
       dispatch({ type: 'SET_CONNECTION_ERROR', payload: err.message });
     } finally {
+      checkingRef.current = false;
       setChecking(false);
     }
-  }, [state.settings.ollamaUrl, dispatch, checking]);
+  }, [state.settings.ollamaUrl, dispatch]);
 
   // Initial check + periodic polling
   useEffect(() => {
     runCheck();
     const interval = setInterval(runCheck, 30000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.settings.ollamaUrl]);
+  }, [runCheck]);
 
   const statusLabel = checking
     ? 'Checking…'

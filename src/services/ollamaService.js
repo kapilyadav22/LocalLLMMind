@@ -6,12 +6,12 @@
  */
 
 function getBaseUrl(customUrl) {
+  const cleanUrl = customUrl ? customUrl.trim().replace(/\/+$/, '') : '';
   // If a custom URL is provided (e.g., remote server), use it directly
-  if (customUrl && customUrl !== 'http://localhost:11434') {
-    return customUrl;
+  if (cleanUrl && cleanUrl !== 'http://localhost:11434' && cleanUrl !== 'http://127.0.0.1:11434') {
+    return cleanUrl;
   }
-  // In dev, use the Vite proxy (relative path)
-  // In production, fall back to localhost:11434
+  // In dev/preview with Vite proxy, use relative path to prevent CORS restrictions
   return '';
 }
 
@@ -82,6 +82,7 @@ export async function streamChat({
         options: {
           temperature: options.temperature ?? 0.7,
           top_p: options.topP ?? 0.9,
+          num_ctx: options.contextWindow || options.numCtx || 4096,
           ...(options.maxTokens && { num_predict: options.maxTokens }),
         },
       }),
@@ -102,7 +103,6 @@ export async function streamChat({
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      // Keep the last potentially incomplete line in the buffer
       buffer = lines.pop() || '';
 
       for (const line of lines) {
@@ -131,6 +131,7 @@ export async function streamChat({
         }
         if (parsed.done) {
           onDone?.(parsed);
+          return;
         }
       } catch {
         // Skip
@@ -146,3 +147,149 @@ export async function streamChat({
     }
   }
 }
+
+/**
+ * Pull a model from Ollama library with streaming progress
+ * @param {Object} params
+ * @param {string} params.model - Model name (e.g. 'llama3.2', 'deepseek-r1:8b')
+ * @param {string} params.ollamaUrl - Ollama server URL
+ * @param {function} params.onProgress - Callback with { status, completed, total, percent }
+ * @param {AbortSignal} params.signal - Abort signal
+ */
+export async function pullModel({ model, ollamaUrl = 'http://localhost:11434', onProgress, signal }) {
+  const baseUrl = getBaseUrl(ollamaUrl);
+  const url = baseUrl ? `${baseUrl}/api/pull` : '/api/pull';
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: model, stream: true }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`Failed to pull model: ${errorText || response.statusText}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const parsed = JSON.parse(line);
+        const percent =
+          parsed.total && parsed.completed
+            ? Math.round((parsed.completed / parsed.total) * 100)
+            : 0;
+        onProgress?.({
+          status: parsed.status || '',
+          completed: parsed.completed || 0,
+          total: parsed.total || 0,
+          percent,
+        });
+        if (parsed.status === 'success') {
+          return true;
+        }
+      } catch {
+        // Skip malformed lines
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Delete a model from Ollama
+ */
+export async function deleteModel({ model, ollamaUrl = 'http://localhost:11434' }) {
+  const baseUrl = getBaseUrl(ollamaUrl);
+  const url = baseUrl ? `${baseUrl}/api/delete` : '/api/delete';
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: model }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`Failed to delete model: ${errorText || response.statusText}`);
+  }
+  return true;
+}
+
+/**
+ * Fetch detailed info about a specific model
+ */
+export async function showModel({ model, ollamaUrl = 'http://localhost:11434' }) {
+  const baseUrl = getBaseUrl(ollamaUrl);
+  const url = baseUrl ? `${baseUrl}/api/show` : '/api/show';
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: model }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get model info: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/**
+ * Generate a concise, smart conversation title using the local model
+ * Runs non-streaming with low token prediction limit for rapid completion
+ */
+export async function generateConversationTitle({
+  model,
+  userMessage,
+  ollamaUrl = 'http://localhost:11434',
+}) {
+  if (!model || !userMessage) return null;
+  const baseUrl = getBaseUrl(ollamaUrl);
+  const url = baseUrl ? `${baseUrl}/api/chat` : '/api/chat';
+
+  try {
+    const prompt = `Summarize the following user request into a concise 3 to 5 word title for a chat sidebar. Do not include quotes, markdown, or punctuation:\n"${userMessage.slice(0, 300)}"`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        stream: false,
+        options: {
+          temperature: 0.3,
+          num_predict: 12,
+        },
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    let title = (data.message?.content || '').trim();
+    // Clean up any extraneous quotes or punctuation
+    title = title.replace(/^["'#*`]+|["'#*`]+$/g, '').trim();
+    if (title.length > 50) title = title.slice(0, 50) + '…';
+    return title || null;
+  } catch (err) {
+    console.warn('[OllamaService] Smart auto-titling skipped:', err.message);
+    return null;
+  }
+}
+
+

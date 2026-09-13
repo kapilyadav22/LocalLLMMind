@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FormControl,
   InputLabel,
@@ -11,24 +11,30 @@ import {
 } from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { fetchModels } from '../../services/ollamaService';
-import { useChatStore } from '../../store/chatStore';
+import { useChatStore } from '../../store/chatContext';
 
 export default function ModelSelector({ value, onChange, size = 'small', variant = 'standard' }) {
   const { state, dispatch } = useChatStore();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const loadModels = async () => {
+      setLoading(true);
       try {
         const models = await fetchModels(state.settings.ollamaUrl);
-        dispatch({ type: 'SET_MODELS', payload: models });
+        if (isMounted) dispatch({ type: 'SET_MODELS', payload: models });
       } catch (err) {
-        console.error('Failed to fetch models:', err);
+        if (isMounted) console.error('Failed to fetch models:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
     if (state.isConnected) {
       loadModels();
     }
+    return () => { isMounted = false; };
   }, [state.isConnected, state.settings.ollamaUrl, dispatch]);
 
   const formatSize = (bytes) => {
@@ -37,14 +43,16 @@ export default function ModelSelector({ value, onChange, size = 'small', variant
     return gb >= 1 ? `${gb.toFixed(1)}GB` : `${(bytes / 1e6).toFixed(0)}MB`;
   };
 
+  const hasSelected = state.models.some((m) => m.name === value);
+
   if (state.models.length === 0) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {state.isConnected ? (
+        {loading ? (
           <CircularProgress size={16} />
         ) : (
           <Typography variant="caption" color="text.secondary">
-            No models available
+            {state.isConnected ? 'No models (pull in Settings)' : 'Disconnected'}
           </Typography>
         )}
       </Box>
@@ -85,6 +93,13 @@ export default function ModelSelector({ value, onChange, size = 'small', variant
             </Box>
           )}
         >
+          {!hasSelected && value && (
+            <MenuItem value={value} disabled>
+              <Typography variant="body2" color="text.secondary">
+                {value} (not installed)
+              </Typography>
+            </MenuItem>
+          )}
           {state.models.map((model) => (
             <MenuItem key={model.name} value={model.name}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -112,6 +127,13 @@ export default function ModelSelector({ value, onChange, size = 'small', variant
         onChange={(e) => onChange(e.target.value)}
         label="Model"
       >
+        {!hasSelected && value && (
+          <MenuItem value={value} disabled>
+            <Typography variant="body2" color="text.secondary">
+              {value} (not installed)
+            </Typography>
+          </MenuItem>
+        )}
         {state.models.map((model) => (
           <MenuItem key={model.name} value={model.name}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>

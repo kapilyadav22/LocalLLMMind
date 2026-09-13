@@ -8,3 +8,17 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>
 );
+
+// Register Service Worker for PWA support
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        console.log('[LocalMind] Service Worker registered:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('[LocalMind] Service Worker registration failed:', err);
+      });
+  });
+}

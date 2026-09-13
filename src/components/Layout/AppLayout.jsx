@@ -17,11 +17,18 @@ import MenuIcon from '@mui/icons-material/Menu';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import SettingsIcon from '@mui/icons-material/Settings';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AddIcon from '@mui/icons-material/Add';
 import Sidebar from './Sidebar';
 import ChatView from '../Chat/ChatView';
 import SettingsDialog from '../Settings/SettingsDialog';
-import { useChatStore } from '../../store/chatStore';
+import ModelManagerDialog from '../Settings/ModelManagerDialog';
+import GlobalSearchDialog from './GlobalSearchDialog';
+import KeyboardShortcutsDialog from '../common/KeyboardShortcutsDialog';
+import CustomAlertDialog from '../common/CustomAlertDialog';
+import AppLogo from '../common/AppLogo';
+import { useChatStore } from '../../store/chatContext';
 import { checkConnection, fetchModels } from '../../services/ollamaService';
+import { DEFAULT_SHORTCUTS } from '../../constants/appConstants';
 
 const SIDEBAR_WIDTH = 280;
 
@@ -30,7 +37,16 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState(0);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [modelManagerOpen, setModelManagerOpen] = useState(false);
   const { state, dispatch } = useChatStore();
+
+  const handleOpenSettings = (tabIndex = 0) => {
+    setSettingsInitialTab(typeof tabIndex === 'number' ? tabIndex : 0);
+    setSettingsOpen(true);
+  };
 
   // Snackbar state
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
@@ -69,6 +85,21 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
     }
   }, [state.isConnected, state.connectionChecked, state.connectionError, state.models.length, state.settings.ollamaUrl]);
 
+  // Listen for global toast feedback notifications
+  useEffect(() => {
+    const handleToast = (e) => {
+      if (e.detail?.message) {
+        setSnackbar({
+          open: true,
+          message: e.detail.message,
+          severity: e.detail.severity || 'info',
+        });
+      }
+    };
+    window.addEventListener('llm-toast', handleToast);
+    return () => window.removeEventListener('llm-toast', handleToast);
+  }, []);
+
   const handleRetryConnection = async () => {
     dispatch({ type: 'SET_CONNECTION_ERROR', payload: null });
     try {
@@ -89,13 +120,105 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
     }
   };
 
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isEditingField =
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable;
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+      const shortcutsList = state.shortcuts || DEFAULT_SHORTCUTS;
+      for (const s of shortcutsList) {
+        const matchKey =
+          s.key?.toLowerCase() === e.key?.toLowerCase() ||
+          (s.key === ' ' && e.key === ' ') ||
+          (s.key === 'Escape' && e.key === 'Escape');
+
+        const sModifiers = s.modifiers || [];
+        const matchCmd = sModifiers.includes('ctrlOrCmd') ? isCmdOrCtrl : !isCmdOrCtrl;
+        const matchShift = sModifiers.includes('shift') ? Boolean(e.shiftKey) : !e.shiftKey;
+        const matchAlt = sModifiers.includes('alt') ? Boolean(e.altKey) : !e.altKey;
+
+        if (matchKey && matchCmd && matchShift && matchAlt) {
+          // If typing inside an input field, only fire if modifier was present or it's Escape
+          if (isEditingField && !isCmdOrCtrl && !e.altKey && e.key !== 'Escape') {
+            continue;
+          }
+
+          e.preventDefault();
+
+          const action = s.actionType || s.id;
+          switch (action) {
+            case 'new_chat':
+              dispatch({ type: 'NEW_CONVERSATION' });
+              break;
+            case 'toggle_sidebar':
+              setSidebarOpen((prev) => !prev);
+              break;
+            case 'open_settings':
+              setSettingsOpen((prev) => !prev);
+              break;
+            case 'global_search':
+              setGlobalSearchOpen((prev) => !prev);
+              break;
+            case 'open_model_manager':
+              setModelManagerOpen((prev) => !prev);
+              break;
+            case 'show_shortcuts':
+              setShortcutsOpen((prev) => !prev);
+              break;
+            case 'toggle_theme':
+              onThemeToggle?.();
+              break;
+            case 'focus_input': {
+              const inputEl = document.getElementById('chat-message-input');
+              inputEl?.focus();
+              break;
+            }
+            case 'stop_generation':
+              if (state.isStreaming) {
+                window.dispatchEvent(new CustomEvent('llm-stop-stream'));
+              } else if (settingsOpen) {
+                setSettingsOpen(false);
+              } else if (shortcutsOpen) {
+                setShortcutsOpen(false);
+              } else if (globalSearchOpen) {
+                setGlobalSearchOpen(false);
+              } else if (modelManagerOpen) {
+                setModelManagerOpen(false);
+              }
+              break;
+            case 'insert_template': {
+              const textToInsert = s.payload || '';
+              window.dispatchEvent(
+                new CustomEvent('llm-insert-text', { detail: { text: textToInsert } })
+              );
+              break;
+            }
+            default:
+              break;
+          }
+          return;
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.shortcuts, state.isStreaming, settingsOpen, shortcutsOpen, globalSearchOpen, modelManagerOpen, dispatch, onThemeToggle]);
+
   const handleToggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
   };
 
   const sidebarContent = (
     <Sidebar
-      onOpenSettings={() => setSettingsOpen(true)}
+      onOpenSettings={handleOpenSettings}
+      onOpenShortcuts={() => setShortcutsOpen(true)}
+      onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
+      onOpenModelManager={() => setModelManagerOpen(true)}
+      onCloseMobile={() => isMobile && setSidebarOpen(false)}
     />
   );
 
@@ -108,12 +231,14 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           ModalProps={{ keepMounted: true }}
-          PaperProps={{
-            sx: {
-              width: SIDEBAR_WIDTH,
-              bgcolor: 'background.paper',
-              borderRight: '1px solid',
-              borderColor: 'divider',
+          slotProps={{
+            paper: {
+              sx: {
+                width: SIDEBAR_WIDTH,
+                bgcolor: 'background.paper',
+                borderRight: '1px solid',
+                borderColor: 'divider',
+              },
             },
           }}
         >
@@ -264,18 +389,63 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           </Box>
         )}
 
-        {/* Top bar for mobile menu toggle */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: state.connectionChecked && !state.isConnected ? 52 : 12,
-            left: 12,
-            zIndex: 10,
-            transition: 'top 0.3s ease',
-          }}
-        >
-          {(isMobile || !sidebarOpen) && (
-            <Tooltip title="Toggle sidebar">
+        {/* Mobile Header Bar */}
+        {isMobile && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 1.5,
+              py: 0.75,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: alpha(theme.palette.background.paper, 0.75),
+              backdropFilter: 'blur(12px)',
+              zIndex: 15,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <IconButton size="small" onClick={handleToggleSidebar} edge="start">
+                <MenuIcon fontSize="small" />
+              </IconButton>
+              <AppLogo size={24} fontSize="0.95rem" />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Tooltip title="New chat">
+                <IconButton
+                  size="small"
+                  onClick={() => dispatch({ type: 'NEW_CONVERSATION' })}
+                  sx={{
+                    color: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) },
+                  }}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Settings">
+                <IconButton size="small" onClick={() => setSettingsOpen(true)} sx={{ color: 'text.secondary' }}>
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        )}
+
+        {/* Desktop floating menu toggle when sidebar is collapsed */}
+        {!isMobile && !sidebarOpen && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: state.connectionChecked && !state.isConnected ? 52 : 12,
+              left: 12,
+              zIndex: 10,
+              transition: 'top 0.3s ease',
+            }}
+          >
+            <Tooltip title="Expand sidebar (Cmd+B)">
               <IconButton
                 onClick={handleToggleSidebar}
                 sx={{
@@ -291,8 +461,8 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
                 <MenuIcon />
               </IconButton>
             </Tooltip>
-          )}
-        </Box>
+          </Box>
+        )}
 
         <ChatView />
       </Box>
@@ -303,6 +473,34 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
         onClose={() => setSettingsOpen(false)}
         themeMode={themeMode}
         onThemeToggle={onThemeToggle}
+        initialTab={settingsInitialTab}
+      />
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
+
+      {/* Global Conversation Search Dialog */}
+      <GlobalSearchDialog
+        open={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+      />
+
+      {/* Ollama Model Manager Dialog */}
+      <ModelManagerDialog
+        open={modelManagerOpen}
+        onClose={() => setModelManagerOpen(false)}
+        ollamaUrl={state.settings.ollamaUrl}
+        onModelsChanged={async () => {
+          try {
+            const models = await fetchModels(state.settings.ollamaUrl);
+            dispatch({ type: 'SET_MODELS', payload: models });
+          } catch (err) {
+            console.error('[AppLayout] Failed to refresh models:', err);
+          }
+        }}
       />
 
       {/* Snackbar notifications */}
@@ -321,6 +519,9 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Custom Alert & Confirmation Dialog */}
+      <CustomAlertDialog />
     </Box>
   );
 }
