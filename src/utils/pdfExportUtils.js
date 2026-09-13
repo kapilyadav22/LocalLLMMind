@@ -1,7 +1,7 @@
 /**
- * PDF & Print Export Utility for LocalMind
+ * PDF & Print Export Utility for LocalLLMMind
  * Generates an executive, beautifully styled printable document and triggers browser print-to-PDF.
- * Engineered for LocalMind by Kapil Kumar Yadav.
+ * Engineered for LocalLLMMind by Kapil Kumar Yadav.
  */
 
 function escapeHtml(unsafe) {
@@ -57,7 +57,7 @@ function formatMessageContent(content) {
 export function exportConversationToPdf(conversation) {
   if (!conversation) return;
 
-  const title = conversation.title || 'LocalMind Conversation';
+  const title = conversation.title || 'LocalLLMMind Conversation';
   const model = conversation.model || 'Local LLM';
   const dateStr = new Date(conversation.createdAt || Date.now()).toLocaleDateString(undefined, {
     year: 'numeric',
@@ -80,7 +80,7 @@ export function exportConversationToPdf(conversation) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${escapeHtml(title)} — LocalMind PDF Export</title>
+  <title>${escapeHtml(title)} — LocalLLMMind PDF Export</title>
   <style>
     @page {
       size: A4;
@@ -347,7 +347,7 @@ export function exportConversationToPdf(conversation) {
 
   <div class="doc-header">
     <div class="doc-brand">
-      <span class="brand-title">LocalMind</span>
+      <span class="brand-title">LocalLLMMind</span>
       <span class="brand-tag">Private Local AI Workstation</span>
     </div>
     <div class="doc-title">${escapeHtml(title)}</div>
@@ -391,7 +391,7 @@ export function exportConversationToPdf(conversation) {
   </div>
 
   <div class="doc-footer">
-    Exported from LocalMind — Production-Grade Local AI Workstation
+    Exported from LocalLLMMind — Production-Grade Local AI Workstation
   </div>
 
   <script>

@@ -1,5 +1,5 @@
 /**
- * Triggers a global toast notification in LocalMind
+ * Triggers a global toast notification in LocalLLMMind
  * @param {string} message - The message to display
  * @param {'success' | 'info' | 'warning' | 'error'} severity - Notification tone
  */

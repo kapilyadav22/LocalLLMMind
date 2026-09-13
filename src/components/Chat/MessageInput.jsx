@@ -53,8 +53,8 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
     const handlePromptsUpdated = () => {
       setAllPrompts(loadAllPrompts());
     };
-    window.addEventListener('localmind-prompts-updated', handlePromptsUpdated);
-    return () => window.removeEventListener('localmind-prompts-updated', handlePromptsUpdated);
+    window.addEventListener('localllmmind-prompts-updated', handlePromptsUpdated);
+    return () => window.removeEventListener('localllmmind-prompts-updated', handlePromptsUpdated);
   }, []);
 
   // Voice input

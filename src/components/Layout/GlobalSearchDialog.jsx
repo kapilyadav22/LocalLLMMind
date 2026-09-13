@@ -1,5 +1,5 @@
 /**
- * Global Conversation Search Dialog for LocalMind
+ * Global Conversation Search Dialog for LocalLLMMind
  * Full-screen search across all conversations with highlighted snippets.
  * Cmd+Shift+F opens this dialog.
  * Engineered by Kapil Kumar Yadav

@@ -46,7 +46,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
   // Helper to format text/markdown
   const getFormattedChatMarkdown = () => {
     let md = `# ${title}\n\n`;
-    md += `*Exported from LocalMind on ${new Date().toLocaleString()} · Model: ${model}*\n\n---\n\n`;
+    md += `*Exported from LocalLLMMind on ${new Date().toLocaleString()} · Model: ${model}*\n\n---\n\n`;
     messages.forEach((m) => {
       const roleName = m.role === 'user' ? '👤 **You**' : '🤖 **Assistant**';
       md += `### ${roleName}\n\n`;
@@ -59,7 +59,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
       }
       md += `---\n\n`;
     });
-    md += `\n*Exported using LocalMind · Created by Kapil Kumar Yadav*\n`;
+    md += `\n*Exported using LocalLLMMind · Created by Kapil Kumar Yadav*\n`;
     return md;
   };
 
@@ -70,7 +70,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
       const role = m.role === 'user' ? 'You' : 'Assistant';
       txt += `[${role}]:\n${m.content}\n\n`;
     });
-    txt += `\nExported from LocalMind by Kapil Kumar Yadav\n`;
+    txt += `\nExported from LocalLLMMind by Kapil Kumar Yadav\n`;
     return txt;
   };
 
@@ -553,7 +553,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             {/* Footer Watermark */}
             <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
               <Typography variant="caption" sx={{ opacity: 0.6, fontSize: '0.72rem' }}>
-                Exported with LocalMind • Designed by Kapil Kumar Yadav
+                Exported with LocalLLMMind • Designed by Kapil Kumar Yadav
               </Typography>
             </Box>
           </Box>

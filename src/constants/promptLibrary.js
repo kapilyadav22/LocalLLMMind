@@ -1,5 +1,5 @@
 /**
- * Built-in Prompt Library & Slash Commands Catalog for LocalMind
+ * Built-in Prompt Library & Slash Commands Catalog for LocalLLMMind
  * Single source of truth for default slash commands and prompt templates.
  * Designed & Engineered by Kapil Kumar Yadav
  */

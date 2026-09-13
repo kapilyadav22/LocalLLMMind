@@ -141,8 +141,8 @@ export default function ChatView() {
         setSandboxArtifact(e.detail);
       }
     };
-    window.addEventListener('localmind-open-artifact', handleOpenArtifact);
-    return () => window.removeEventListener('localmind-open-artifact', handleOpenArtifact);
+    window.addEventListener('localllmmind-open-artifact', handleOpenArtifact);
+    return () => window.removeEventListener('localllmmind-open-artifact', handleOpenArtifact);
   }, []);
 
   // Initialize default models for Arena Mode
@@ -165,8 +165,8 @@ export default function ChatView() {
     const handlePersonasUpdated = () => {
       setAllPersonas(getAllPersonas());
     };
-    window.addEventListener('localmind-personas-updated', handlePersonasUpdated);
-    return () => window.removeEventListener('localmind-personas-updated', handlePersonasUpdated);
+    window.addEventListener('localllmmind-personas-updated', handlePersonasUpdated);
+    return () => window.removeEventListener('localllmmind-personas-updated', handlePersonasUpdated);
   }, []);
 
   const currentPersonaKey = activeConvo?.persona || state.settings.defaultPersona || 'default';

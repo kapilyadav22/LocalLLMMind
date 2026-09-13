@@ -15,10 +15,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
-        console.log('[LocalMind] Service Worker registered:', reg.scope);
+        console.log('[LocalLLMMind] Service Worker registered:', reg.scope);
       })
       .catch((err) => {
-        console.warn('[LocalMind] Service Worker registration failed:', err);
+        console.warn('[LocalLLMMind] Service Worker registration failed:', err);
       });
   });
 }

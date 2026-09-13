@@ -1,5 +1,5 @@
 /**
- * Document & Code File Utilities for LocalMind
+ * Document & Code File Utilities for LocalLLMMind
  * Engineered by Kapil Kumar Yadav
  * 
  * Provides client-side text and code extraction, syntax detection,

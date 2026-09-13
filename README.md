@@ -1,17 +1,16 @@
-# LocalMind
+# LocalLLMMind
 
 <div align="center">
 
-**A production-grade, privacy-first desktop AI workstation for local models.**  
+**A production-grade, privacy-first desktop AI workstation for local LLMs.**  
 *Engineered by **Kapil Kumar Yadav***
 
 [![React 19](https://img.shields.io/badge/React-19.3.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Material UI](https://img.shields.io/badge/Material--UI-9.2-007FFF?logo=mui&logoColor=white)](https://mui.com/)
 [![Ollama](https://img.shields.io/badge/Ollama-Native_API-000000?logo=ollama&logoColor=white)](https://ollama.com/)
-[![Vision Ready](https://img.shields.io/badge/Vision-Multimodal_Ready-06b6d4?logo=eye&logoColor=white)](#-multimodal-vision-support)
-[![DeepSeek-R1](https://img.shields.io/badge/DeepSeek--R1-Reasoning_Ready-8b5cf6)](#-deepseek-r1--reasoning-model-support)
-[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](#-docker-deployment)
+[![Docker Hub](https://img.shields.io/badge/Docker_Hub-kapilyadav22%2Flocalllmmind-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/kapilyadav22/localllmmind)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](#-progressive-web-app)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 </div>
@@ -20,190 +19,136 @@
 
 ## 🌟 Overview
 
-**LocalMind** is a state-of-the-art desktop AI workstation designed to interface directly with local LLMs via **Ollama**. Running 100% locally on your machine with zero data leaving your network, it combines the aesthetic finesse of modern AI products with hardware-optimized streaming performance, live token throughput benchmarking, reasoning model introspection, and seamless multimodal vision capabilities.
+**LocalLLMMind** is a full-featured desktop AI workstation that interfaces directly with **Ollama** to run LLMs 100% locally. Zero data leaves your machine. It combines the polish of modern AI products with hardware-optimized streaming, live benchmarking, reasoning model introspection, multimodal vision, RAG document chat, and a complete model management toolkit.
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-### 👁️ Multimodal Vision Support (Llama 3.2 Vision, LLaVA, Moondream)
-- **Multi-Source Image Ingestion**:
-  - **Clipboard Paste**: Paste screenshots directly with <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>V</kbd> anywhere in the input box.
-  - **Drag & Drop**: Drag images from your desktop or browser into the interactive composer dropzone.
-  - **File Attachment Picker**: Browse and attach photos using the integrated image picker button.
-- **Visual Thumbnail Strip**: Inspect attached images, view formatted file sizes, and remove individual attachments before sending.
-- **Click-to-Zoom Lightbox**: Click any message image to inspect high-resolution details in an interactive zoom modal.
-- **Native Ollama Vision Pipeline**: Automatic conversion to raw Base64 formatted to Ollama's `/api/chat` `images` array specification.
-- **Popular Vision Models Supported**:
-  - `llama3.2-vision:11b` (Meta's flagship local vision model)
-  - `llava:7b` / `llava:13b` (Fast visual instruction tuning)
-  - `moondream:1.8b` (Ultra-lightweight edge vision model)
+### 👁️ Multimodal Vision Support
+- **Paste, drag-and-drop, or browse** images directly into the chat composer.
+- Automatic Base64 conversion to Ollama's `/api/chat` `images` array.
+- Click-to-zoom lightbox for high-resolution image inspection.
+- Supports `llama3.2-vision`, `llava`, `moondream`, and all Ollama vision models.
 
-### ⚡ Hardware-Optimized Token Batching (30–80+ tok/s)
-- **Zero UI Freezes**: Streaming tokens are buffered on a 35ms micro-interval (~30fps), reducing React re-renders by ~75% during rapid GPU/NPU token generation.
-- **Jitter-Free Auto-Scroll**: Instant viewport positioning during active generation prevents browser smooth-scroll animation collisions.
-- **Scroll-To-Bottom Fab**: Automatic detection reveals a floating navigation button whenever you scroll up during an active response.
-
-### 📊 Live Generation Metrics (Tokens/Sec)
-- Real-time performance badge under assistant messages displaying:
-  - **Generation speed**: `⚡ 54.2 tok/s`
-  - **Token count & generation time**: `340 tokens (6.2s)`
-  - **Active model identifier**: `llama3.2`, `deepseek-r1:8b`, etc.
+### ⚡ Hardware-Optimized Streaming (30–80+ tok/s)
+- Tokens are buffered on a 35ms micro-interval (~30fps), reducing React re-renders by ~75%.
+- Jitter-free auto-scroll during active generation.
+- Live generation metrics badge: speed (`⚡ 54.2 tok/s`), token count, duration, and active model.
 
 ### 🧠 DeepSeek-R1 & Reasoning Model Support
-- Built-in parser for `<think>...</think>` tags used by DeepSeek-R1, Qwen 2.5, and reasoning models.
-- Interactive **collapsible thought accordion** with a live pulsing indicator during the chain-of-thought phase that auto-folds once the final answer begins streaming.
-- Enhanced Prism syntax highlighting for 15+ developer languages (`TypeScript`, `Rust`, `Go`, `Python`, `C++`, `SQL`, `YAML`, `Docker`, etc.).
+- Built-in `<think>...</think>` tag parser for DeepSeek-R1, Qwen 2.5, and reasoning models.
+- Interactive collapsible thought accordion with live pulsing indicator during chain-of-thought.
 
-### 📥 In-App Ollama Model Manager
-- **Visual Model Catalog**: View installed models with disk footprints, parameter sizes (e.g. `8B`), and quantization formats (e.g. `Q4_K_M`).
-- **Live Stream Pulls**: Pull any model directly from the UI with real-time percentage progress bars via Ollama's `/api/pull`.
-- **Quick Recommendations**: 1-click pull chips for `llama3.2`, `deepseek-r1:8b`, `qwen2.5-coder:7b`, `mistral`, and `gemma2`.
-- **Model Deletion**: Safely prune unused models to reclaim disk storage.
+### 📄 RAG / Document Chat ("Chat with Docs")
+- Drag-and-drop or browse **40+ file formats**: source code (`.py`, `.js`, `.ts`, `.rs`, `.go`, `.java`, `.cpp`), configs (`.json`, `.yaml`, `.toml`, `.env`), data (`.csv`, `.sql`), and docs (`.md`, `.txt`).
+- Client-side text extraction — nothing leaves your machine.
+- 500KB safety guard to prevent context window overflows.
 
-### 📁 Project Folders & Chat Hierarchy
-- **Custom Project Folders**: Create, color-code, and organize conversations into structured project folders (e.g., *Frontend Architecture*, *AI Research*, *Marketing*).
-- **Collapsible Sidebar Tree**: Interactive folder accordion with chat count badges, fold/unfold toggles, and direct "+ New Chat in Project" actions.
-- **Move Between Projects**: Move chats between folders or back to General with the 1-click "Move to Project..." dialog.
-- **Header Project Badge**: Interactive project tag in active chat header allows instant project reassignment.
-- **Project-Aware Search**: Real-time keyword filtering expands project folders automatically when matching conversations are found inside.
-- **Context-Aware Welcome Screen**: Dynamic project badge and tailored messaging displayed when launching a new conversation in a project folder.
-- **Safe Folder Deletion**: Choose to keep conversations (returning them to General) or delete chats alongside the folder.
-- **Full Backup Integration**: Project hierarchy is fully persisted in local storage and included in JSON backup exports/imports.
+### 📥 In-App Model Manager
+- View installed models with disk size, parameter count, quantization format, and model family.
+- Pull new models with real-time progress bars and cancel support.
+- 1-click quick-pull chips for popular models (`llama3.2`, `deepseek-r1:8b`, `phi4`, `gemma3`).
 
-### 📌 Pinned Chats & Quick Access
-- **Pin to Top**: Star and pin critical conversations to a dedicated `PINNED` section at the top of the sidebar for instant retrieval.
-- **Project Indication on Pinned Chats**: Pinned chats display their associated project color accent dot for seamless organization.
-- **1-Click Pin/Unpin**: Toggle pin state from the conversation context menu with immediate tactile toast feedback.
+### ✏️ Message Edit & Regenerate
+- **Edit any user message** — truncates the conversation and streams a fresh response from that point.
+- **Regenerate assistant responses** with full version history.
+- **Version navigation** — browse between regenerated responses with `◀ 2/3 ▶` arrows.
 
-### 🛡️ Accidental Deletion Protection & Safe UX
-- **Safe Conversation Deletion**: Confirmation dialog prompts before deleting any conversation, displaying the exact conversation title to prevent accidental data loss.
-- **Snappy Action Feedback Toasts**: Global toast alerts confirm major operations: pinning/unpinning, moving between projects, folder creation/deletion, renaming, and markdown exports.
+### 🎭 AI Personas
+- 6 built-in system personas: General Assistant, Software Architect, Bug Hunter, Concise & Direct, Academic Researcher, Creative Writer.
+- Switch personas per-conversation from the chat header.
 
-### 💾 Custom Memory Path & Local Disk Storage Sync
-- **User-Defined Storage Location**: Choose between sandboxed browser memory or a designated folder path on your computer hard drive (e.g., `~/Documents/LocalLLM_Memory`, `/Volumes/Drive/AI_Chats`).
-- **Native Directory Picker**: Link directly to any local directory using the modern HTML5 File System Access API (`window.showDirectoryPicker`).
-- **Live Background Auto-Sync**: Automatically writes all conversations, projects, and memory metadata directly to disk whenever chats update.
-- **Obsidian & VS Code Ready (`chats/*.md`)**: Generates readable Markdown files in a dedicated `chats/` subfolder alongside `conversations.json`, allowing you to browse, search, and edit your AI chats in external markdown tools.
-- **One-Click Folder Restore**: Seamlessly reload and restore conversations and project structures from any linked folder.
-- **Sidebar Memory Indicator**: Persistent footer pill displaying the active memory folder name with quick navigation to Storage & Memory settings.
+### ⚔️ Arena Mode (Side-by-Side Comparison)
+- Run two models simultaneously on the same prompt.
+- Compare responses side-by-side and vote for the better output.
 
-### 📄 Document & Code File Ingestion ("Chat with Docs")
-- **40+ Formats Supported**: Ingest source code files (`.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.rs`, `.go`, `.java`, `.c`, `.cpp`), configurations (`.json`, `.yaml`, `.toml`, `.env`, `.xml`), data (`.csv`, `.tsv`, `.sql`), and documentation (`.md`, `.txt`, `.log`).
-- **Client-Side Text Extraction**: Ingested entirely in-browser with zero third-party cloud uploads.
-- **Safety Size Guard**: Automatic 500KB cap per file protects local LLM context windows from memory blowups.
-- **Interactive Document Chip Strip**: Preview attached documents, token estimates, and remove items before submitting.
+### 📝 Prompt Library & Slash Commands
+- Built-in prompt template library with CRUD, categories, and import/export.
+- Type `/` in the composer for instant slash-command autocomplete.
 
-### 🧠 Context Window Tuning & Live Capacity Meter
-- **Ollama `num_ctx` Customization**: Configure context size per model invocation from 2K up to 128K (`2048` to `131072` tokens) with VRAM guidance in Settings.
-- **Live Header Capacity Meter**: Dynamic chip displays real-time estimated tokens vs. context window limit (e.g. `~1.2k / 4k tok`).
-- **Visual Alert Thresholds**: Color changes smoothly from primary blue to amber (65%+) and red (85%+) to prevent context overflows.
+### 🔍 Global Conversation Search (<kbd>Cmd+Shift+F</kbd>)
+- Full-text search across all conversations with highlighted match snippets.
+- Results grouped by conversation with 1-click jump to the exact message.
 
-### 🔍 In-Chat Message Search (<kbd>Cmd+F</kbd> / <kbd>Ctrl+F</kbd>)
-- **Instant Keyword Navigation**: Press <kbd>Cmd+F</kbd> or click the search icon to activate in-chat search.
-- **Match Navigation**: Cycle through matches seamlessly with <kbd>Enter</kbd> (next) and <kbd>Shift+Enter</kbd> (prev) with automatic smooth scrolling to the matching bubble.
-- **Visual Highlight**: Active search matches are highlighted with an ambient accent border.
+### 🧠 Smart Auto-Title Generation
+- After the first exchange, the LLM automatically generates a descriptive 3–5 word title for the conversation.
 
-### 🎭 AI Personas & Prompt Presets
-- **Preset System Personas**:
-  - 🤖 **General Assistant**: Balanced, adaptable, and versatile.
-  - 🏗️ **Software Architect**: Senior engineer specializing in patterns, clean code, and type safety.
-  - 🔍 **Bug Hunter & Code Reviewer**: Meticulous code inspection for security vulnerabilities and edge cases.
-  - ⚡ **Concise & Direct**: High-density answers with zero conversational fluff.
-  - 🎓 **Academic Researcher**: Deep analytical rigor with citations and structured methodologies.
-  - 🎨 **Creative Writer**: Expressive storytelling, rich metaphors, and evocative prose.
-- **Per-Conversation Role**: Switch personas at any time directly from the chat header.
-
-### 💬 Quote-Reply & Conversation Forking
-- **Selective Quote-Reply**: Click the reply icon on any message to quote it with an active context chip banner in the composer.
-- **Fork / Branch Chat**: Split conversations from any turn into a new chat thread using the fork button (<kbd>CallSplit</kbd>) on message bubbles.
-
-### 📤 Share & Rich Save Modal
-- **Save as High-Res PNG Image**: Powered by `html-to-image`, captures full markdown formatting, syntax highlighting, and watermark for social sharing.
-- **Save as Plain Text (`.txt`)**: Clean unformatted text for simple note-taking tools.
-- **Save as Markdown (`.md`)**: Full markdown export with metadata header and dividers.
-- **1-Click Copy Chat**: Instant formatted markdown copy to clipboard with toast confirmation.
-- **Native OS Web Share**: Share conversation links and snippets directly via AirDrop, Messages, and Mail on supported devices.
-
-### 🔄 Message Branching & Regeneration
-- **Regenerate Responses**: Click the refresh button on any assistant message to trigger a fresh completion from that turn.
-- **Edit & Branch**: Edit previous user prompts to explore alternative conversation paths.
+### 📁 Project Folders
+- Create color-coded project folders to organize conversations.
+- Collapsible sidebar tree with chat count badges.
+- Move conversations between projects.
 
 ### 🎙️ Voice Input & Text-to-Speech
-- **Voice Transcription**: Speak prompts naturally using Web Speech Recognition with live interim feedback.
-- **Natural Text-to-Speech**: Listen to assistant responses with automatic markdown and `<think>` reasoning tag sanitization.
+- Speak prompts using Web Speech Recognition with live interim feedback.
+- Listen to assistant responses with markdown-sanitized TTS output.
 
-### 📄 Markdown & Backup Export
-- **1-Click Markdown Export**: Download individual conversations as beautifully formatted `.md` files.
-- **Full Database Portability**: Export and import complete conversation histories as JSON backups.
+### 📊 Context Window Meter
+- Live header chip showing estimated tokens vs. context limit (e.g. `~1.2k / 4k tok`).
+- Color-coded thresholds: blue → amber (65%+) → red (85%+).
 
-### 🌓 Curated Dark & Light Design System
-- Tailored glassmorphism palettes with fluid elevation, subtle borders, and harmonious gradients.
-- Fully responsive layout with mobile app bar, drawer sheet, and adaptive full-screen dialogs.
+### 💾 Local Storage & Disk Sync
+- Choose between browser memory or a local directory on your hard drive.
+- Auto-sync conversations to disk as JSON + readable Markdown files (Obsidian-compatible).
+- Full JSON backup import/export with data portability.
+
+### 📤 Share & Export
+- Export as **PNG image**, **Markdown**, **plain text**, or **PDF** (print-optimized A4).
+- Native OS Web Share API integration.
+
+### 🌐 Web Search Grounding
+- Ground LLM responses with real-time web search context.
+- Source citations displayed as clickable chips on messages.
+
+### 🧪 Artifact Sandbox
+- Interactive sandbox drawer for rendering HTML/CSS/JS artifacts generated by the LLM.
+
+### ⌨️ Custom Keyboard Shortcuts
+- Full shortcuts manager with conflict detection and custom keybinding creation.
+- Bind custom key combos to prompt templates and quick actions.
+
+| Shortcut | Action |
+| :--- | :--- |
+| <kbd>Cmd+K</kbd> | New Conversation |
+| <kbd>Cmd+B</kbd> | Toggle Sidebar |
+| <kbd>Cmd+F</kbd> | Find in Chat |
+| <kbd>Cmd+Shift+F</kbd> | Global Search |
+| <kbd>Cmd+Shift+M</kbd> | Model Manager |
+| <kbd>Cmd+,</kbd> | Settings |
+| <kbd>Cmd+/</kbd> | Shortcuts Manager |
+| <kbd>Escape</kbd> | Stop Generation / Dismiss |
+
+### 📱 Progressive Web App
+- Installable as a standalone desktop app via Chrome/Edge.
+- Offline caching service worker for app shell and static assets.
+
+### 🌓 Dark & Light Theme
+- Curated glassmorphism design with fluid gradients and subtle micro-animations.
+- Fully responsive — works on desktop, tablet, and mobile.
 
 ---
-
-## ⌨️ Keyboard Shortcuts & Custom Keybindings
-
-LocalMind features a **full-featured Keyboard Shortcuts Manager** where all keybindings can be viewed, searched, customized, and created with conflict detection.
-
-### Accessing Shortcuts
-- **Direct Keystroke**: Press <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>/</kbd> anywhere in the application.
-- **Sidebar Footer**: Click the keyboard icon (<kbd>⌘/</kbd>) in the sidebar bottom bar.
-- **Settings Dialog**: Navigate to the dedicated **Shortcuts** tab inside Settings (<kbd>Cmd+,</kbd>).
-
-### Default Keybindings
-
-| Shortcut | Action | Description |
-| :--- | :--- | :--- |
-| <kbd>Enter</kbd> | Send Message | Submit the prompt to the active model |
-| <kbd>Shift</kbd> + <kbd>Enter</kbd> | New Line | Insert a multi-line break in the composer |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>F</kbd> | Find in Chat | Open search bar to navigate messages |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>K</kbd> | New Conversation | Start a clean new chat session |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>B</kbd> | Toggle Sidebar | Collapse or expand navigation drawer |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>,</kbd> | Open Settings | Access parameters, models, data, and dev info |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>/</kbd> | Shortcuts Manager | View, rebind, or create custom shortcuts |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> | Toggle Theme | Quick switch between Dark and Light mode |
-| <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>I</kbd> | Focus Chat Input | Jump cursor immediately into message composer |
-| <kbd>Escape</kbd> | Stop / Dismiss | Stop active streaming or dismiss open dialogs |
-
-### Custom Shortcuts & Automation
-- **Rebind Keys**: Click the edit pencil icon next to any shortcut and press your preferred key combination on the keyboard.
-- **Create Custom Shortcuts**: Click **"+ Create Shortcut"** to bind custom key combinations to:
-  - Custom prompt templates (e.g. `/summarize`, `/refactor`, `/explain`, or your own custom prompt instructions)
-  - Quick actions (toggle theme, new chat, focus composer, toggle sidebar)
-- **Automatic Persistence**: All custom shortcuts and key rebindings are stored in local storage and persist across sessions.
-- **Factory Reset**: Restore all standard shortcuts anytime via the **Reset All** button.
-
 
 ## 🚀 Quickstart
 
 ### Prerequisites
-1. Ensure [Node.js](https://nodejs.org/) (v18+) is installed.
-2. Ensure [Ollama](https://ollama.com/) is installed and running:
+1. Install [Node.js](https://nodejs.org/) (v18+).
+2. Install and run [Ollama](https://ollama.com/):
    ```bash
    ollama serve
    ```
-3. Pull a model (e.g. Llama 3.2 or Llama 3.2 Vision):
+3. Pull a model:
    ```bash
    ollama pull llama3.2
-   # Or for multimodal vision tasks:
+   # For vision:
    ollama pull llama3.2-vision:11b
-   # Or lightweight vision:
-   ollama pull moondream
    ```
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/kapilyadav22/local_llm_ui.git
 cd local_llm_ui
-
-# Install dependencies
 npm install
-
-# Launch development server
 npm run dev
 ```
 
@@ -220,98 +165,105 @@ npm run preview
 
 ## 🐳 Docker Deployment
 
-LocalMind can be run anywhere via Docker without needing Node.js installed on your host system.
+### ⚡ Quick Start via Docker Hub (No build required)
 
-### Option 1: Docker Compose (Recommended)
-
-Run LocalMind connected to Ollama running on your host machine:
+Pull and run the pre-built, lightweight Alpine image directly from Docker Hub:
 
 ```bash
-# Start LocalMind on http://localhost:3000
+docker run -d \
+  --name localllmmind \
+  -p 3000:80 \
+  --add-host=host.docker.internal:host-gateway \
+  -e OLLAMA_URL=http://host.docker.internal:11434 \
+  --restart unless-stopped \
+  kapilyadav22/localllmmind:latest
+```
+
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+> 📦 **Docker Hub Repositories:**  
+> - [`kapilyadav22/localllmmind`](https://hub.docker.com/r/kapilyadav22/localllmmind) *(Official)*  
+> - [`kapilyadav22/runlocalllm`](https://hub.docker.com/r/kapilyadav22/runlocalllm) *(Mirror)*
+
+---
+
+### Docker Compose (Recommended)
+
+```bash
+# Start LocalLLMMind → http://localhost:3000
 docker compose up -d
 ```
 
-> **Note**: The container automatically connects to host Ollama at `http://host.docker.internal:11434` via `extra_hosts`.
+> Automatically connects to host Ollama at `http://host.docker.internal:11434`.
 
-#### All-in-One Stack (LocalMind + Ollama in Docker):
-If you don't have Ollama installed on your host and want Docker to manage both:
+#### All-in-One (LocalLLMMind + Ollama containerized):
 
 ```bash
 docker compose --profile with-ollama up -d
 ```
 
-### Option 2: Standalone Docker Run
+---
 
-Build and run the lightweight container directly:
+### Build from Source
 
 ```bash
-# 1. Build the production image
-docker build -t localmind .
-
-# 2. Run the container (connecting to host Ollama)
+docker build -t localllmmind .
 docker run -d \
   -p 3000:80 \
   --add-host=host.docker.internal:host-gateway \
   -e OLLAMA_URL=http://host.docker.internal:11434 \
-  --name localmind \
-  localmind
+  --name localllmmind \
+  localllmmind
 ```
-
-Access the workstation at **[http://localhost:3000](http://localhost:3000)**.
-
-### Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `80` | Internal Nginx listening port |
-| `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama API endpoint to reverse proxy for streaming |
+| `PORT` | `80` | Nginx listening port inside container |
+| `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama API endpoint on host gateway |
 
 ---
 
-## 🏗️ Architecture & Project Structure
+## 🏗️ Project Structure
 
 ```text
-localmind/
+localllmmind/
 ├── src/
-│   ├── assets/             # Brand logos & graphics
 │   ├── components/
-│   │   ├── Chat/           # ChatView, MessageBubble, MessageInput, WelcomeScreen
-│   │   ├── Layout/         # AppLayout, Sidebar, ProjectDialog, MoveToProjectDialog
-│   │   ├── Settings/       # SettingsDialog (Model Manager, Parameters, Data, Shortcuts)
-│   │   └── common/         # AppLogo, DeveloperBadge, MarkdownRenderer, ModelSelector
-│   ├── constants/          # appConstants.js (Branding, Developer, Config, Models)
-│   ├── hooks/              # useAudio.js (Speech-to-Text & Text-to-Speech)
-│   ├── services/           # ollamaService.js (Stream chat, Pull, Delete, Show)
-│   ├── store/              # chatStore.jsx & chatContext.js (State management & projects)
-│   ├── utils/              # storage.js (persistence), imageUtils.js (vision ingestion & Base64 encoder)
-│   ├── theme.js            # Curated Dark and Light MUI theme tokens
-│   ├── App.jsx             # Top-level application shell
-│   └── main.jsx            # Entrypoint
-├── public/                 # Favicon & static vector assets
-├── package.json
-└── vite.config.js          # Vite configuration with Ollama API proxy
+│   │   ├── Chat/           # ChatView, MessageBubble, MessageInput, WelcomeScreen,
+│   │   │                   # ArenaMessageBubble, ContextMeter, PersonaDialog,
+│   │   │                   # PromptLibraryDialog, ShareChatDialog, ArtifactSandboxDrawer
+│   │   ├── Layout/         # AppLayout, Sidebar, GlobalSearchDialog, ProjectDialog
+│   │   ├── Settings/       # SettingsDialog, ModelManagerDialog
+│   │   └── common/         # MarkdownRenderer, ShortcutsManager, AppLogo, ModelSelector
+│   ├── constants/          # App branding, models, personas, shortcuts
+│   ├── hooks/              # useAudio (Speech-to-Text & TTS)
+│   ├── services/           # ollamaService, webSearchService
+│   ├── store/              # React Context + useReducer state management
+│   ├── utils/              # Storage, documentUtils, pdfExport, dialogService
+│   ├── theme.js            # MUI Dark & Light theme tokens
+│   └── main.jsx            # Entrypoint with PWA service worker registration
+├── public/                 # PWA manifest, service worker, icons
+├── Dockerfile              # Multi-stage Node + Nginx Alpine build
+├── docker-compose.yml      # Production orchestration with Ollama profiles
+├── nginx.conf.template     # Streaming reverse proxy for LLM tokens
+└── vite.config.js          # Vite config with Ollama API proxy
 ```
 
 ---
 
-## 👨‍💻 Developer & Author
+## 👨‍💻 Author
 
-**LocalMind** was architected, designed, and developed by:
+**Kapil Kumar Yadav** — *Lead Engineer & Designer*
 
-- **Kapil Kumar Yadav** — *Lead Engineer & Designer*
-- **GitHub**: [@kapilyadav22](https://github.com/kapilyadav22)
+- [![GitHub](https://img.shields.io/badge/GitHub-kapilyadav22-181717?logo=github)](https://github.com/kapilyadav22)
+- [![LinkedIn](https://img.shields.io/badge/LinkedIn-kapilyadav22-0A66C2?logo=linkedin)](https://www.linkedin.com/in/kapilyadav22/)
+- [![X](https://img.shields.io/badge/X-kapilyadav2210-000000?logo=x)](https://x.com/kapilyadav2210)
+- [![Email](https://img.shields.io/badge/Email-singhkapil347%40gmail.com-EA4335?logo=gmail)](mailto:singhkapil347@gmail.com)
 
 ---
 
-## 📄 License & Attribution
+## 📄 License
 
-This project is licensed under the Apache License 2.0.
+Licensed under the [Apache License 2.0](LICENSE).
 
-You are free to use, modify, and distribute this project in accordance with the license.
-
-If you use this project or create a derivative work, please retain the original copyright and license notices and provide appropriate attribution to the original author.
-
-Copyright © 2026 Kapil Kumar Yadav.
-
-See the [LICENSE](LICENSE) file for the complete license terms.
-
+Copyright © 2026 Kapil Kumar Yadav. All rights reserved.

@@ -1,5 +1,5 @@
 /**
- * Model Manager Dialog for LocalMind
+ * Model Manager Dialog for LocalLLMMind
  * Pull, delete, inspect, and manage Ollama models from the UI.
  * Engineered by Kapil Kumar Yadav
  */

@@ -1,6 +1,6 @@
 {
-  "name": "LocalMind",
-  "short_name": "LocalMind",
+  "name": "LocalLLMMind",
+  "short_name": "LocalLLMMind",
   "description": "Private AI workstation for local LLMs powered by Ollama. Engineered by Kapil Kumar Yadav.",
   "start_url": "/",
   "display": "standalone",

@@ -1,5 +1,5 @@
 /**
- * File System Storage Utility for LocalMind
+ * File System Storage Utility for LocalLLMMind
  * Enables persistent saving and syncing of chats and projects to a user-selected local directory.
  * Powered by the HTML5 File System Access API with IndexedDB directory handle caching.
  * Designed & Engineered by Kapil Kumar Yadav
@@ -158,7 +158,7 @@ export async function syncToDirectory(dirHandle, { conversations = [], projects 
 
   // 3. Write memory_manifest.json
   const manifest = {
-    application: 'LocalMind',
+    application: 'LocalLLMMind',
     developer: 'Kapil Kumar Yadav',
     version: '1.2.0',
     lastSyncedAt: new Date().toISOString(),
@@ -187,7 +187,7 @@ export async function syncToDirectory(dirHandle, { conversations = [], projects 
         const fileName = `${safeTitle}_${convo.id.substring(0, 8)}.md`;
 
         let md = `# ${convo.title || 'Chat'}\n\n`;
-        md += `*Exported from LocalMind · Model: ${convo.model || 'Unknown'} · Last Updated: ${convo.updatedAt || convo.createdAt}*\n\n---\n\n`;
+        md += `*Exported from LocalLLMMind · Model: ${convo.model || 'Unknown'} · Last Updated: ${convo.updatedAt || convo.createdAt}*\n\n---\n\n`;
 
         (convo.messages || []).forEach((m) => {
           const role = m.role === 'user' ? '👤 **User**' : '🤖 **Assistant**';

@@ -1,5 +1,5 @@
 /**
- * Triggers a custom, non-blocking modal alert dialog in LocalMind
+ * Triggers a custom, non-blocking modal alert dialog in LocalLLMMind
  * Replaces native browser window.alert()
  * @param {Object} options
  * @param {string} options.title - Dialog heading
@@ -26,12 +26,12 @@ export function showCustomAlert({
       onConfirm: () => resolve(true),
       onCancel: () => resolve(true),
     };
-    window.dispatchEvent(new CustomEvent('localmind-custom-dialog', { detail }));
+    window.dispatchEvent(new CustomEvent('localllmmind-custom-dialog', { detail }));
   });
 }
 
 /**
- * Triggers a custom modal confirmation dialog in LocalMind
+ * Triggers a custom modal confirmation dialog in LocalLLMMind
  * Replaces native browser window.confirm()
  * @param {Object} options
  * @param {string} options.title - Dialog heading
@@ -64,6 +64,6 @@ export function showCustomConfirm({
       onConfirm: () => resolve(true),
       onCancel: () => resolve(false),
     };
-    window.dispatchEvent(new CustomEvent('localmind-custom-dialog', { detail }));
+    window.dispatchEvent(new CustomEvent('localllmmind-custom-dialog', { detail }));
   });
 }

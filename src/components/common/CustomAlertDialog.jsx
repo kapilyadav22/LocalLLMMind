@@ -29,8 +29,8 @@ export default function CustomAlertDialog() {
         setOpen(true);
       }
     };
-    window.addEventListener('localmind-custom-dialog', handleCustomDialog);
-    return () => window.removeEventListener('localmind-custom-dialog', handleCustomDialog);
+    window.addEventListener('localllmmind-custom-dialog', handleCustomDialog);
+    return () => window.removeEventListener('localllmmind-custom-dialog', handleCustomDialog);
   }, []);
 
   const handleClose = useCallback(

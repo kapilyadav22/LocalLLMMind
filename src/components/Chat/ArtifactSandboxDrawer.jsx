@@ -136,12 +136,12 @@ export default function ArtifactSandboxDrawer({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `localmind-artifact.${ext}`;
+    a.download = `localllmmind-artifact.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast(`Downloaded localmind-artifact.${ext}`, 'success');
+    showToast(`Downloaded localllmmind-artifact.${ext}`, 'success');
   };
 
   const handleOpenExternal = () => {

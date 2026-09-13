@@ -1,11 +1,11 @@
 /**
- * LocalMind Service Worker
+ * LocalLLMMind Service Worker
  * Provides offline caching for app shell and static assets.
  * Network-first strategy for API calls, cache-first for static assets.
  * Engineered by Kapil Kumar Yadav
  */
 
-const CACHE_NAME = 'localmind-cache-v1';
+const CACHE_NAME = 'localllmmind-cache-v1';
 
 // App shell assets to pre-cache
 const APP_SHELL = [

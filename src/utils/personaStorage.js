@@ -1,12 +1,12 @@
 /**
  * Persona Storage Utility
- * Manages custom user-created AI Personas and system agents in LocalMind.
+ * Manages custom user-created AI Personas and system agents in LocalLLMMind.
  * Engineered by Kapil Kumar Yadav.
  */
 
 import { AI_PERSONAS } from '../constants/appConstants';
 
-const PERSONA_STORAGE_KEY = 'localmind_custom_personas';
+const PERSONA_STORAGE_KEY = 'localllmmind_custom_personas';
 
 export function loadCustomPersonas() {
   try {
@@ -39,7 +39,7 @@ export function saveCustomPersona(personaData) {
     }
 
     localStorage.setItem(PERSONA_STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('localmind-personas-updated'));
+    window.dispatchEvent(new CustomEvent('localllmmind-personas-updated'));
     return newPersona;
   } catch (err) {
     console.error('[PersonaStorage] Failed to save custom persona:', err);
@@ -52,7 +52,7 @@ export function deleteCustomPersona(id) {
     const existing = loadCustomPersonas();
     const updated = existing.filter((p) => p.id !== id);
     localStorage.setItem(PERSONA_STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('localmind-personas-updated'));
+    window.dispatchEvent(new CustomEvent('localllmmind-personas-updated'));
     return true;
   } catch (err) {
     console.error('[PersonaStorage] Failed to delete custom persona:', err);

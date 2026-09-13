@@ -7,8 +7,8 @@ export const DEVELOPER_NAME = 'Kapil Kumar Yadav';
 export const DEVELOPER_TITLE = 'Full Stack & AI Engineer';
 export const DEVELOPER_WATERMARK = 'Engineered by Kapil Kumar Yadav';
 
-export const APP_NAME = 'LocalMind';
-export const APP_SHORT_NAME = 'LocalMind';
+export const APP_NAME = 'LocalLLMMind';
+export const APP_SHORT_NAME = 'LocalLLMMind';
 export const APP_SUBTITLE = 'Production-Grade Local AI Workstation';
 export const APP_VERSION = '1.2.0';
 

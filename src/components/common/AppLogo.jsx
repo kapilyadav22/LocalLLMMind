@@ -52,7 +52,7 @@ export default function AppLogo({
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* LocalMind Neural Cortex & Synapse Matrix */}
+          {/* LocalLLMMind Neural Cortex & Synapse Matrix */}
           <path
             d="M9.5 4C7.6 4 6.2 5.4 6 7.2C4.9 7.8 4 9.2 4 10.8C4 12.1 4.7 13.2 5.6 13.8C5.3 14.4 5 15.1 5 15.9C5 17.6 6.3 19 8 19C8.5 19 8.9 18.9 9.3 18.7C9.9 19.5 10.9 20 12 20C13.1 20 14.1 19.5 14.7 18.7C15.1 18.9 15.5 19 16 19C17.7 19 19 17.6 19 15.9C19 15.1 18.7 14.4 18.4 13.8C19.3 13.2 20 12.1 20 10.8C20 9.2 19.1 7.8 18 7.2C17.8 5.4 16.4 4 14.5 4C13.5 4 12.7 4.4 12 5.1C11.3 4.4 10.5 4 9.5 4Z"
             stroke="white"

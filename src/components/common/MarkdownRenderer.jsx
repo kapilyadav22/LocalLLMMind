@@ -77,7 +77,7 @@ function CodeBlock({ language, children }) {
 
   const handleOpenSandbox = () => {
     window.dispatchEvent(
-      new CustomEvent('localmind-open-artifact', {
+      new CustomEvent('localllmmind-open-artifact', {
         detail: {
           code,
           language: isSvg ? 'svg' : 'html',

@@ -318,7 +318,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `localmind-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      downloadAnchor.setAttribute("download", `localllmmind-backup-${new Date().toISOString().slice(0, 10)}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -340,7 +340,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
           dispatch({ type: 'IMPORT_CONVERSATIONS', payload: imported });
           showCustomAlert({
             title: 'Import Successful',
-            message: `Successfully imported ${imported.length} conversations into LocalMind!`,
+            message: `Successfully imported ${imported.length} conversations into LocalLLMMind!`,
             type: 'success',
           });
         } else if (imported && Array.isArray(imported.conversations)) {
@@ -355,7 +355,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
           const projCount = imported.projects?.length || 0;
           showCustomAlert({
             title: 'Import Successful',
-            message: `Successfully imported ${imported.conversations.length} conversations and ${projCount} project folder(s) into LocalMind!`,
+            message: `Successfully imported ${imported.conversations.length} conversations and ${projCount} project folder(s) into LocalLLMMind!`,
             type: 'success',
           });
         } else {

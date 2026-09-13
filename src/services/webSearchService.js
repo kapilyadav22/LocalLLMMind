@@ -1,7 +1,7 @@
 /**
  * Web Search Service
  * Connects to the local web search proxy to provide live web grounding for local models.
- * Engineered for LocalMind by Kapil Kumar Yadav.
+ * Engineered for LocalLLMMind by Kapil Kumar Yadav.
  */
 
 export async function performWebSearch(query) {

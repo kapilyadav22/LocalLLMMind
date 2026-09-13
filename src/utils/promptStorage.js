@@ -1,12 +1,12 @@
 /**
- * Prompt Storage Utility for LocalMind
+ * Prompt Storage Utility for LocalLLMMind
  * Handles persistence of custom prompts and merging with built-in defaults.
  * Designed & Engineered by Kapil Kumar Yadav
  */
 
 import { DEFAULT_PROMPTS } from '../constants/promptLibrary';
 
-const STORAGE_KEY = 'localmind_custom_prompts';
+const STORAGE_KEY = 'localllmmind_custom_prompts';
 
 /**
  * Load all prompts: merges custom prompts with default prompts
@@ -43,7 +43,7 @@ export function saveCustomPrompts(prompts) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prompts));
     // Dispatch event so other components or open dialogs update in real-time
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('localmind-prompts-updated'));
+      window.dispatchEvent(new CustomEvent('localllmmind-prompts-updated'));
     }
   } catch (e) {
     console.error('Failed to save custom prompts to localStorage:', e);
@@ -127,7 +127,7 @@ export function deleteCustomPrompt(id) {
 export function exportPromptsAsJson() {
   const custom = loadCustomPrompts();
   const payload = {
-    application: 'LocalMind',
+    application: 'LocalLLMMind',
     version: '1.2.0',
     exportedAt: new Date().toISOString(),
     prompts: custom,
@@ -137,7 +137,7 @@ export function exportPromptsAsJson() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `localmind_prompts_${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `localllmmind_prompts_${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
