@@ -11,6 +11,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Native_API-000000?logo=ollama&logoColor=white)](https://ollama.com/)
 [![Docker Hub](https://img.shields.io/badge/Docker_Hub-kapilyadav22%2Flocalllmmind-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/kapilyadav22/localllmmind)
 [![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](#-progressive-web-app)
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?logo=github-sponsors&logoColor=white)](https://github.com/sponsors/kapilyadav22)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 </div>
@@ -262,8 +263,19 @@ localllmmind/
 
 ---
 
+## 💖 Sponsor & Support
+
+If you find **LocalLLMMind** valuable for your workflow, consider sponsoring or supporting this project:
+
+- [💖 Sponsor on GitHub Sponsors](https://github.com/sponsors/kapilyadav22)
+- ⭐ **Star this repository** to help others discover it
+- 🐛 **Report bugs or submit features** to help improve the project
+
+---
+
 ## 📄 License
 
 Licensed under the [Apache License 2.0](LICENSE).
 
 Copyright © 2026 Kapil Kumar Yadav. All rights reserved.
+
