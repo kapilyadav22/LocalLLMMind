@@ -10,7 +10,7 @@ export const DEVELOPER_WATERMARK = 'Engineered by Kapil Kumar Yadav';
 export const APP_NAME = 'LocalLLMMind';
 export const APP_SHORT_NAME = 'LocalLLMMind';
 export const APP_SUBTITLE = 'Production-Grade Local AI Workstation';
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 export const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 

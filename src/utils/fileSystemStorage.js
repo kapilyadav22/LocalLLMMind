@@ -160,7 +160,7 @@ export async function syncToDirectory(dirHandle, { conversations = [], projects 
   const manifest = {
     application: 'LocalLLMMind',
     developer: 'Kapil Kumar Yadav',
-    version: '1.2.0',
+    version: '1.3.0',
     lastSyncedAt: new Date().toISOString(),
     totalConversations: conversations.length,
     totalProjects: projects.length,

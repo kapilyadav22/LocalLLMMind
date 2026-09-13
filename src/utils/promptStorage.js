@@ -128,7 +128,7 @@ export function exportPromptsAsJson() {
   const custom = loadCustomPrompts();
   const payload = {
     application: 'LocalLLMMind',
-    version: '1.2.0',
+    version: '1.3.0',
     exportedAt: new Date().toISOString(),
     prompts: custom,
   };
