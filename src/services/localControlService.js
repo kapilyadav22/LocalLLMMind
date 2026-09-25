@@ -11,7 +11,7 @@ export async function localAction(action, body = {}) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-LocalLLMMind-Token': status.token },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(action === 'projects/run' ? 75000 : 45000),
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Local action failed.');

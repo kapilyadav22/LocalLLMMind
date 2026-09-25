@@ -77,6 +77,10 @@ export default function CodeConsoleDrawer({
     terminalBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [terminalHistory, logs, tab]);
 
+  useEffect(() => {
+    if (busy || logs.length) setTab(executionInfo.isWeb ? 'preview' : 'console');
+  }, [busy, logs, executionInfo.isWeb]);
+
   // Handle vertical drag resize
   const handleDragStart = useCallback((e) => {
     e.preventDefault();
@@ -216,9 +220,7 @@ export default function CodeConsoleDrawer({
       {/* Header bar */}
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{
+        sx={{ alignItems: 'center', justifyContent: 'space-between',
           px: 2,
           py: 0.5,
           bgcolor: '#161b22',
@@ -227,7 +229,7 @@ export default function CodeConsoleDrawer({
           mt: '4px',
         }}
       >
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <Tabs
             value={tab}
             onChange={(_, v) => setTab(v)}
@@ -253,7 +255,7 @@ export default function CodeConsoleDrawer({
 
           {/* System access permission indicator badge */}
           {tab === 'terminal' && (
-            <Tooltip title={hasSystemPermission ? 'System access granted. Click to manage permissions.' : 'Restricted sandbox. Click to grant system access.'}>
+            <Tooltip title={hasSystemPermission ? 'System access granted. Click to manage permissions.' : 'Direct command mode. Click to allow shell syntax.'}>
               <Chip
                 size="small"
                 icon={hasSystemPermission ? <ShieldCheck size={11} color="#3fb950" /> : <ShieldAlert size={11} color="#d29922" />}
@@ -308,7 +310,7 @@ export default function CodeConsoleDrawer({
           )}
         </Stack>
 
-        <Stack direction="row" spacing={0.5} alignItems="center">
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           {tab === 'console' && onRerun && (
             <Button
               size="small"
@@ -356,7 +358,7 @@ export default function CodeConsoleDrawer({
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', fontFamily: 'monospace', fontSize: '0.8rem', pr: 0.5 }}>
               {terminalHistory.length === 0 && (
                 <Box sx={{ color: '#8b949e', fontStyle: 'italic', mb: 1 }}>
-                  Local terminal ready. Run python, node, tests, or system utilities directly in the workspace.
+                  Commands run in a local project copy. Files and dependencies persist for this server session. Each command starts at the project root; use the IDE for interactive or long-running servers.
                 </Box>
               )}
 
@@ -521,7 +523,7 @@ export default function CodeConsoleDrawer({
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={handleDenyPermission} color="inherit" size="small">
-            Restricted Sandbox
+            Direct command mode
           </Button>
           <Button onClick={handleGrantPermission} variant="contained" color="primary" size="small">
             Grant System Access

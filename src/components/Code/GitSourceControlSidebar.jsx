@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, memo } from 'react';
 import {
   Box,
   Typography,
@@ -10,25 +10,21 @@ import {
   alpha,
   useTheme,
   Stack,
-  Divider,
   Collapse,
 } from '@mui/material';
 import {
   GitBranch,
-  GitCommit,
   RotateCw,
   Plus,
   Minus,
   Undo2,
   GitCompare,
-  FileCode,
   FilePlus,
   FileX,
   FileEdit,
   Check,
   ChevronDown,
   ChevronRight,
-  History,
   CheckCircle2,
 } from 'lucide-react';
 import { GIT_STATUS_TYPES } from '../../constants/gitConstants';
@@ -165,18 +161,18 @@ function GitSourceControlSidebarComponent({
   onDiscardAll,
   onCommit,
   onRefresh,
+  disabled = false,
 }) {
   const theme = useTheme();
   const [commitMessage, setCommitMessage] = useState('');
   const [stagedOpen, setStagedOpen] = useState(true);
   const [changesOpen, setChangesOpen] = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(false);
 
-  const { changes = [], stagedChanges = [], unstagedChanges = [], stats = { total: 0 } } = gitState || {};
+  const { stagedChanges = [], unstagedChanges = [], stats = { total: 0 } } = gitState || {};
 
   const handleCommitSubmit = (e) => {
     if (e) e.preventDefault();
-    if (!commitMessage.trim()) return;
+    if (disabled || !stagedChanges.length || !commitMessage.trim()) return;
     onCommit(commitMessage.trim());
     setCommitMessage('');
   };
@@ -189,18 +185,17 @@ function GitSourceControlSidebarComponent({
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <Box inert={disabled || undefined} sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', opacity: disabled ? 0.6 : 1 }}>
+      <Typography variant="caption" sx={{ px: 1.5, pt: 1 }}>Local checkpoints; does not modify your Git repository.</Typography>
       {/* Top Header */}
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ px: 1.5, pt: 1.25, pb: 0.75, borderBottom: 1, borderColor: 'divider' }}
+        sx={{ alignItems: 'center', justifyContent: 'space-between', px: 1.5, pt: 1.25, pb: 0.75, borderBottom: 1, borderColor: 'divider' }}
       >
-        <Stack direction="row" alignItems="center" spacing={0.75}>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
           <GitBranch size={15} color="var(--mui-palette-primary-main, #3b82f6)" />
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            main
+            Workspace history
           </Typography>
           {stats.total > 0 && (
             <Chip
@@ -265,7 +260,7 @@ function GitSourceControlSidebarComponent({
           fullWidth
           variant="contained"
           size="small"
-          disabled={stats.total === 0 || !commitMessage.trim()}
+          disabled={disabled || stagedChanges.length === 0 || !commitMessage.trim()}
           onClick={handleCommitSubmit}
           startIcon={<Check size={14} />}
           sx={{
@@ -277,7 +272,7 @@ function GitSourceControlSidebarComponent({
             borderRadius: 1.5,
           }}
         >
-          Commit to main
+          Commit staged changes
         </Button>
       </Box>
 
@@ -311,7 +306,7 @@ function GitSourceControlSidebarComponent({
                     '&:hover': { bgcolor: 'action.hover' },
                   }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                     {stagedOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Staged Changes
@@ -358,7 +353,7 @@ function GitSourceControlSidebarComponent({
                     '&:hover': { bgcolor: 'action.hover' },
                   }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                     {changesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Changes

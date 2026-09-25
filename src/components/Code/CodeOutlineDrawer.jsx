@@ -189,8 +189,8 @@ export default function CodeOutlineDrawer({
         },
       }}
     >
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <ListTree size={16} color={theme.palette.primary.main} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             Code Outline

@@ -29,6 +29,9 @@ import {
   Sparkles,
   Download,
   Upload,
+  Paperclip,
+  FolderOpen,
+  X,
   ExternalLink,
   Save,
   Undo2,
@@ -49,13 +52,12 @@ import {
   Minimize2,
   ChevronRight,
   ChevronLeft,
-  Cpu,
   FolderTree,
   GitBranch,
-  GitCommit,
-  GitCompare,
 } from 'lucide-react';
 import { useChatStore } from '../../store/chatContext';
+import { importProjectArchive, importDirectoryFiles, readAttachments } from '../../utils/projectImport';
+import { commitStagedFiles, restoreFile } from '../../utils/workspaceChanges';
 import { generateProject } from '../../services/codeGenerationService';
 import { localAction, localStatus } from '../../services/localControlService';
 import { loadCodeWorkspace, newCodeProject, saveCodeWorkspace } from '../../utils/codeProjectStorage';
@@ -66,8 +68,8 @@ import {
   loadEditorSettings,
   saveEditorSettings,
 } from '../../constants/editorThemes';
-import { STACK_PRESETS, INSPIRATION_PROMPTS } from '../../constants/editorConstants';
-import { GIT_STATUS_TYPES, SIDEBAR_TABS } from '../../constants/gitConstants';
+import { STACK_PRESETS } from '../../constants/editorConstants';
+import { SIDEBAR_TABS } from '../../constants/gitConstants';
 import { computeGitStatus } from '../../utils/gitService';
 import CodeEditor from './CodeEditor';
 import FileTree from './FileTree';
@@ -109,7 +111,7 @@ const caption = {
 };
 
 
-export default function CodeWorkspace({ onModels }) {
+export default function CodeWorkspace({ onModels, active = true }) {
   const { state } = useChatStore();
   const [projects, setProjects] = useState([]);
   const [activeId, setActiveId] = useState('');
@@ -184,6 +186,13 @@ export default function CodeWorkspace({ onModels }) {
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
   const [quickOpenSearch, setQuickOpenSearch] = useState('');
   const importInputRef = useRef(null);
+  const folderInputRef = useRef(null);
+  const attachmentFolderRef = useRef(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [importReport, setImportReport] = useState([]);
+  const [contextMode, setContextMode] = useState('project');
+  const [formatBusy, setFormatBusy] = useState(false);
 
   // Git / Source Control state
   const [sidebarTab, setSidebarTab] = useState(SIDEBAR_TABS.EXPLORER); // 'explorer' | 'source_control'
@@ -198,9 +207,9 @@ export default function CodeWorkspace({ onModels }) {
   const controller = useRef(null);
   const storageGeneration = useRef(0);
   const project = projects.find((item) => item.id === activeId);
-  const file = project?.files.find((item) => item.path === path) || project?.files[0];
-  const actualModel = model || state.settings.selectedModel || state.models[0]?.name || 'gpt-6-astra';
-  const locked = busy || !!pending || desktopBusy;
+  const file = project?.files.find((item) => item.path === path);
+  const actualModel = model || state.settings.selectedModel || state.models[0]?.name || '';
+  const locked = busy || !!pending || desktopBusy || importBusy || attachmentBusy || formatBusy || consoleBusy || terminalBusy;
   const activeThemeObj = EDITOR_THEMES.find((t) => t.id === editorSettings.themeId) || EDITOR_THEMES[0];
 
   // Compute git status for current active project
@@ -208,7 +217,7 @@ export default function CodeWorkspace({ onModels }) {
     if (!project) {
       return { changes: [], stagedChanges: [], unstagedChanges: [], statusByPath: {}, stats: { total: 0 } };
     }
-    const base = project.baseFiles && project.baseFiles.length ? project.baseFiles : project.files;
+    const base = project.baseFiles ?? [];
     return computeGitStatus(project.files, base, stagedPaths);
   }, [project, stagedPaths]);
 
@@ -225,15 +234,18 @@ export default function CodeWorkspace({ onModels }) {
         if (!alive) return;
         const mapped = stored.map((p) => ({
           ...p,
-          baseFiles: p.baseFiles && p.baseFiles.length ? p.baseFiles : (p.files || []).map((f) => ({ ...f })),
+          baseFiles: p.baseFiles ?? (p.files || []).map((f) => ({ ...f })),
           commits: p.commits || [],
         }));
         const initial = mapped.length ? mapped : [newCodeProject()];
         setProjects(initial);
-        setActiveId(initial[0].id);
-        const initialOpen = initial[0].files.slice(0, 4).map((f) => f.path);
+        let lastId;
+        try { lastId = localStorage.getItem('localllmmind_active_code_project'); } catch { /* Browser storage may be unavailable. */ }
+        const selected = initial.find((item) => item.id === lastId) || initial[0];
+        setActiveId(selected.id);
+        const initialOpen = selected.files.slice(0, 4).map((f) => f.path);
         setOpenPaths(initialOpen);
-        setPath(initialOpen[0] || initial[0].files[0]?.path || '');
+        setPath(initialOpen[0] || '');
         setReady(true);
       })
       .catch((err) => {
@@ -279,9 +291,23 @@ export default function CodeWorkspace({ onModels }) {
       });
   }, [projects, ready]);
 
+  useEffect(() => {
+    if (ready && activeId) {
+      try { localStorage.setItem('localllmmind_active_code_project', activeId); } catch { /* Workspace content is saved in IndexedDB. */ }
+    }
+  }, [ready, activeId]);
+
+  useEffect(() => {
+    if (!project) return;
+    const valid = new Set(project.files.map((file) => file.path));
+    setOpenPaths((previous) => previous.filter((path) => valid.has(path)));
+    if (path && !valid.has(path)) setPath('');
+  }, [project, path]);
+
   // Global keyboard shortcuts (Cmd+P for quick open file, Escape for exiting fullscreen)
   useEffect(() => {
     function handleGlobalKeys(e) {
+      if (!active) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setQuickOpenOpen(true);
@@ -291,7 +317,7 @@ export default function CodeWorkspace({ onModels }) {
     }
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [isEditorFullscreen]);
+  }, [isEditorFullscreen, active]);
 
   // Explorer left sidebar drag resizing
   const handleExplorerDragStart = useCallback((e) => {
@@ -397,10 +423,11 @@ export default function CodeWorkspace({ onModels }) {
   }
 
   // Universal language-independent code formatting
-  function handleFormatCode() {
-    if (!file) return;
+  async function handleFormatCode() {
+    if (!file || locked) return;
+    setFormatBusy(true);
     try {
-      const formatted = formatCode(file.content, file.path, editorSettings.tabSize);
+      const formatted = await formatCode(file.content, file.path, editorSettings.tabSize);
       if (formatted !== file.content) {
         updateProject((current) => ({
           files: current.files.map((item) => (item.path === file.path ? { ...item, content: formatted } : item)),
@@ -411,11 +438,11 @@ export default function CodeWorkspace({ onModels }) {
       }
     } catch (err) {
       showToast(`Formatting error: ${err.message}`, 'error');
-    }
+    } finally { setFormatBusy(false); }
   }
 
   async function handleRunCode() {
-    if (!file) return;
+    if (!file || locked) return;
     setConsoleOpen(true);
     setConsoleBusy(true);
     try {
@@ -423,6 +450,7 @@ export default function CodeWorkspace({ onModels }) {
         code: file.content,
         path: file.path,
         allFiles: project.files,
+        projectId: project.id,
       });
       setConsoleLogs(result.logs || []);
       setExecutionInfo({
@@ -441,13 +469,14 @@ export default function CodeWorkspace({ onModels }) {
 
   async function handleExecuteTerminalCommand(cmd, options = { systemAccess: true }) {
     const trimmed = String(cmd || '').trim();
-    if (!trimmed || terminalBusy) return;
+    if (!trimmed || locked) return;
     setTerminalBusy(true);
     const entryId = crypto.randomUUID();
     try {
       const result = await runTerminalCommand({
         command: trimmed,
         allFiles: project?.files || [],
+        projectId: project.id,
         systemAccess: options.systemAccess,
       });
       setTerminalHistory((prev) => [
@@ -476,76 +505,35 @@ export default function CodeWorkspace({ onModels }) {
     }
   }
 
-  async function handleImportFile(e) {
-    const uploadFile = e.target?.files?.[0];
-    if (!uploadFile) return;
-    e.target.value = '';
+  function acceptImport(result) {
+    const imported = { ...newCodeProject(result.name, result.files), comments: result.comments, summary: result.summary };
+    setProjects((previous) => [...previous, imported]);
+    switchProject(imported.id, imported);
+    setImportReport(result.skipped);
+    setNotice(`Opened ${result.name}: ${result.files.length} source files${result.skipped.length ? `, ${result.skipped.length} skipped` : ''}. Edits are saved as a workspace copy.`);
+  }
 
-    const isZip = uploadFile.name.toLowerCase().endsWith('.zip');
-    const isJson = uploadFile.name.toLowerCase().endsWith('.json');
+  async function handleImportFile(event) {
+    const upload = event.target.files?.[0];
+    event.target.value = '';
+    if (!upload || locked) return;
+    setImportBusy(true); setError('');
+    try { acceptImport(await importProjectArchive(upload)); }
+    catch (error) { setError(`Import failed: ${error.message}`); }
+    finally { setImportBusy(false); }
+  }
 
-    if (!isZip && !isJson) {
-      showToast('Please select a .zip archive or .json project file.', 'warning');
-      return;
-    }
+  function handleOpenFolder() {
+    if (!locked) folderInputRef.current?.click();
+  }
 
-    try {
-      if (isZip) {
-        const zip = await JSZip.loadAsync(uploadFile);
-        const extracted = [];
-        let meta = null;
-
-        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-          if (zipEntry.dir) continue;
-          if (relativePath.includes('__MACOSX') || relativePath.endsWith('.DS_Store')) continue;
-
-          if (relativePath === '.localllmmind.json') {
-            try {
-              const metaText = await zipEntry.async('string');
-              meta = JSON.parse(metaText);
-            } catch {
-              // Ignore malformed metadata
-            }
-            continue;
-          }
-
-          const content = await zipEntry.async('string');
-          extracted.push({ path: relativePath, content });
-        }
-
-        if (extracted.length === 0) {
-          showToast('No readable source code files found in archive.', 'error');
-          return;
-        }
-
-        const validatedFiles = validateFiles(extracted);
-        const projectName = meta?.name || uploadFile.name.replace(/\.zip$/i, '') || 'Imported Project';
-        const newProj = newCodeProject(projectName, validatedFiles);
-        if (Array.isArray(meta?.comments)) newProj.comments = meta.comments;
-        if (meta?.summary) newProj.summary = meta.summary;
-
-        setProjects((prev) => [...prev, newProj]);
-        switchProject(newProj.id);
-        showToast(`Imported project "${projectName}" (${validatedFiles.length} files).`, 'success');
-      } else {
-        const text = await uploadFile.text();
-        const data = JSON.parse(text);
-        if (!Array.isArray(data.files)) {
-          throw new Error('Invalid project JSON: expected a "files" array.');
-        }
-        const validatedFiles = validateFiles(data.files);
-        const projectName = data.name || uploadFile.name.replace(/\.json$/i, '') || 'Imported Project';
-        const newProj = newCodeProject(projectName, validatedFiles);
-        if (Array.isArray(data.comments)) newProj.comments = data.comments;
-        if (data.summary) newProj.summary = data.summary;
-
-        setProjects((prev) => [...prev, newProj]);
-        switchProject(newProj.id);
-        showToast(`Imported project "${projectName}" (${validatedFiles.length} files).`, 'success');
-      }
-    } catch (err) {
-      showToast(`Import failed: ${err.message}`, 'error');
-    }
+  async function handleFolderInput(event) {
+    const files = Array.from(event.target.files || []); event.target.value = '';
+    if (!files.length) return;
+    setImportBusy(true); setError('');
+    try { acceptImport(await importDirectoryFiles(files)); }
+    catch (error) { setError(`Could not open folder: ${error.message}`); }
+    finally { setImportBusy(false); }
   }
 
   function handleAiAction(actionId, generatedPrompt) {
@@ -560,13 +548,13 @@ export default function CodeWorkspace({ onModels }) {
     editorRef.current?.goToLine(line);
   }
 
-  function updateProject(change) {
+  const updateProject = useCallback((change) => {
     setProjects((items) =>
       items.map((item) =>
         item.id === activeId ? { ...item, ...(typeof change === 'function' ? change(item) : change), updatedAt: Date.now() } : item
       )
     );
-  }
+  }, [activeId]);
 
   // Git / Source Control Handlers
   const handleToggleStage = useCallback((filePath) => {
@@ -590,12 +578,12 @@ export default function CodeWorkspace({ onModels }) {
   }, []);
 
   const handleDiscardFile = useCallback((filePath) => {
-    if (!project) return;
+    if (!project || locked) return;
     const baseFiles = project.baseFiles || [];
     const baseFile = baseFiles.find((f) => f.path === filePath);
     if (baseFile) {
       updateProject((proj) => ({
-        files: proj.files.map((f) => (f.path === filePath ? { ...f, content: baseFile.content } : f)),
+        files: restoreFile(proj.files, baseFile),
       }));
     } else {
       updateProject((proj) => ({
@@ -609,36 +597,36 @@ export default function CodeWorkspace({ onModels }) {
     });
     if (activeDiffPath === filePath) setActiveDiffPath(null);
     showToast(`Discarded changes in ${filePath}`, 'info');
-  }, [project, activeDiffPath]);
+  }, [project, activeDiffPath, locked, updateProject]);
 
   const handleDiscardAll = useCallback(() => {
-    if (!project || !project.baseFiles) return;
+    if (!project || !project.baseFiles || locked) return;
     updateProject({
       files: project.baseFiles.map((f) => ({ ...f })),
     });
     setStagedPaths(new Set());
     setActiveDiffPath(null);
     showToast('Discarded all working tree changes', 'info');
-  }, [project]);
+  }, [project, locked, updateProject]);
 
   const handleCommit = useCallback((message) => {
-    if (!project) return;
+    if (!project || locked || !gitStatus.stagedChanges.length) return;
     const commit = {
       id: `commit-${Date.now()}`,
       hash: Math.random().toString(36).substring(2, 9),
       message,
       timestamp: new Date().toISOString(),
-      filesChanged: gitStatus.stats.total,
+      filesChanged: gitStatus.stagedChanges.length,
     };
     const updatedCommits = [commit, ...(project.commits || [])];
     updateProject({
-      baseFiles: project.files.map((f) => ({ ...f })),
+      baseFiles: commitStagedFiles(project.files, project.baseFiles || [], stagedPaths),
       commits: updatedCommits,
     });
     setStagedPaths(new Set());
     if (activeDiffPath) setActiveDiffPath(null);
     showToast(`Committed: "${message}" (${commit.hash})`, 'success');
-  }, [project, gitStatus.stats.total, activeDiffPath]);
+  }, [project, gitStatus.stagedChanges.length, activeDiffPath, stagedPaths, locked, updateProject]);
 
   const handleOpenDiff = useCallback((filePath) => {
     setActiveDiffPath(filePath);
@@ -646,6 +634,7 @@ export default function CodeWorkspace({ onModels }) {
   }, []);
 
   function selectFile(next) {
+    setActiveDiffPath(null);
     setPath(next);
     setOpenPaths((prev) => (prev.includes(next) ? prev : [...prev, next]));
     setSelection({ from: 1, to: 1 });
@@ -662,8 +651,11 @@ export default function CodeWorkspace({ onModels }) {
     });
   }
 
-  function switchProject(id) {
-    const targetProj = projects.find((p) => p.id === id);
+  function switchProject(id, newProject) {
+    const targetProj = newProject || projects.find((p) => p.id === id);
+    setSidebarTab(SIDEBAR_TABS.EXPLORER);
+    setStagedPaths(new Set()); setActiveDiffPath(null); setAttachments([]);
+    setImportReport([]); setContextMode('project'); setConsoleLogs([]); setTerminalHistory([]); setExecutionInfo({});
     const initialPaths = targetProj?.files?.slice(0, 4).map((f) => f.path) || [];
     setOpenPaths(initialPaths);
     setActiveId(id);
@@ -679,10 +671,11 @@ export default function CodeWorkspace({ onModels }) {
   function createProject(name, files = []) {
     const next = newCodeProject(name, files);
     setProjects((items) => [...items, next]);
-    switchProject(next.id);
+    switchProject(next.id, next);
   }
 
   function askDialog(kind, value = '') {
+    if (locked) return;
     setDialog(kind);
     setDialogValue(value);
     setDialogError('');
@@ -717,124 +710,23 @@ export default function CodeWorkspace({ onModels }) {
     }
   }
 
-  // ─── AI Attachment Handlers ───────────────────────────────────────────
-  const MAX_ATTACHMENT_SIZE = 512 * 1024; // 512 KB per file
-  const MAX_TOTAL_ATTACHMENTS = 20;
-
-  async function readFileAsText(fileObj) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error(`Failed to read ${fileObj.name}`));
-      reader.readAsText(fileObj);
-    });
-  }
-
-  async function handleAttachFiles(fileList) {
-    const newAttachments = [];
-    for (const fileObj of fileList) {
-      if (attachments.length + newAttachments.length >= MAX_TOTAL_ATTACHMENTS) {
-        showToast(`Max ${MAX_TOTAL_ATTACHMENTS} attachments allowed`, 'warning');
-        break;
-      }
-      if (fileObj.size > MAX_ATTACHMENT_SIZE) {
-        showToast(`Skipped "${fileObj.name}" — exceeds 512 KB`, 'warning');
-        continue;
-      }
-      // Skip binary files by checking extension
-      const ext = fileObj.name.split('.').pop()?.toLowerCase() || '';
-      const binaryExts = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp', 'mp3', 'mp4', 'avi', 'mov', 'zip', 'tar', 'gz', 'rar', '7z', 'exe', 'dll', 'so', 'dylib', 'woff', 'woff2', 'ttf', 'eot', 'pdf', 'doc', 'docx', 'xls', 'xlsx']);
-      if (binaryExts.has(ext)) {
-        showToast(`Skipped binary file "${fileObj.name}"`, 'info');
-        continue;
-      }
-      try {
-        const content = await readFileAsText(fileObj);
-        newAttachments.push({
-          id: crypto.randomUUID(),
-          name: fileObj.name,
-          path: fileObj.webkitRelativePath || fileObj.name,
-          content,
-          size: fileObj.size,
-        });
-      } catch {
-        showToast(`Could not read "${fileObj.name}"`, 'error');
-      }
-    }
-    if (newAttachments.length > 0) {
-      setAttachments((prev) => [...prev, ...newAttachments]);
-      showToast(`Attached ${newAttachments.length} file(s) as context`, 'success');
-    }
-  }
-
-  function handleAttachmentInputChange(e) {
-    const files = e.target?.files;
-    if (files?.length) handleAttachFiles(Array.from(files));
-    if (e.target) e.target.value = '';
-  }
-
-  async function handleAttachFolder() {
+  async function handleAttachFiles(files) {
+    if (locked || !files.length) return;
+    setAttachmentBusy(true);
     try {
-      if (!window.showDirectoryPicker) {
-        showToast('Folder picker is not supported in this browser', 'warning');
-        return;
-      }
-      const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
-      const files = [];
-      async function readDir(handle, prefix) {
-        for await (const [name, entry] of handle) {
-          const fullPath = prefix ? `${prefix}/${name}` : name;
-          if (entry.kind === 'file') {
-            if (files.length >= MAX_TOTAL_ATTACHMENTS - attachments.length) break;
-            try {
-              const fileObj = await entry.getFile();
-              if (fileObj.size <= MAX_ATTACHMENT_SIZE) {
-                const ext = name.split('.').pop()?.toLowerCase() || '';
-                const skipDirs = new Set(['node_modules', '.git', '__pycache__', '.next', 'dist', 'build', '.venv', 'venv']);
-                const binaryExts = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'mp3', 'mp4', 'zip', 'tar', 'gz', 'rar', 'exe', 'dll', 'so', 'woff', 'woff2', 'ttf', 'eot', 'pdf']);
-                if (!binaryExts.has(ext)) {
-                  const content = await readFileAsText(fileObj);
-                  files.push({ id: crypto.randomUUID(), name, path: fullPath, content, size: fileObj.size });
-                }
-              }
-            } catch { /* skip unreadable */ }
-          } else if (entry.kind === 'directory') {
-            const skipDirs = new Set(['node_modules', '.git', '__pycache__', '.next', 'dist', 'build', '.venv', 'venv']);
-            if (!skipDirs.has(name)) await readDir(entry, fullPath);
-          }
-        }
-      }
-      await readDir(dirHandle, '');
-      if (files.length > 0) {
-        setAttachments((prev) => [...prev, ...files]);
-        showToast(`Attached ${files.length} file(s) from "${dirHandle.name}"`, 'success');
-      } else {
-        showToast('No readable text files found in the folder', 'info');
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') showToast('Could not read folder', 'error');
-    }
+      const result = await readAttachments(files, attachments);
+      setAttachments(result.attachments);
+      if (result.skipped.length) setNotice(`Attachments skipped: ${result.skipped.join('; ')}`);
+    } catch (error) { setError(error.message); }
+    finally { setAttachmentBusy(false); }
   }
-
-  function removeAttachment(id) {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  function handleAttachmentInputChange(event) {
+    const files = Array.from(event.target.files || []); event.target.value = '';
+    handleAttachFiles(files);
   }
-
-  function clearAllAttachments() {
-    setAttachments([]);
-    showToast('All attachments cleared', 'info');
-  }
-
-  function handlePromptDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const files = e.dataTransfer?.files;
-    if (files?.length) handleAttachFiles(Array.from(files));
-  }
-
-  function handlePromptDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
+  function handlePromptDrop(event) {
+    event.preventDefault(); event.stopPropagation();
+    handleAttachFiles(Array.from(event.dataTransfer?.files || []));
   }
 
   // ─── Generate with attachments context ────────────────────────────────
@@ -857,6 +749,7 @@ export default function CodeWorkspace({ onModels }) {
         onProgress: setProgress,
         apiKeys: state.settings.apiKeys,
         apiEndpoints: state.settings.apiEndpoints,
+        contextPaths: contextMode === 'open' ? openPaths : null,
         attachments: attachments.map((a) => ({ path: a.path, content: a.content })),
       });
       if (abort.signal.aborted) return;
@@ -1012,6 +905,9 @@ export default function CodeWorkspace({ onModels }) {
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <input ref={folderInputRef} type="file" webkitdirectory="" multiple hidden onChange={handleFolderInput} />
+      <input ref={attachmentInputRef} type="file" multiple hidden onChange={handleAttachmentInputChange} />
+      <input ref={attachmentFolderRef} type="file" webkitdirectory="" multiple hidden onChange={handleAttachmentInputChange} />
       {/* Hidden file input for project import */}
       <input
         ref={importInputRef}
@@ -1021,16 +917,19 @@ export default function CodeWorkspace({ onModels }) {
         onChange={handleImportFile}
       />
 
+      {importReport.length > 0 && <Box component="details" sx={{ px: 2, py: 1, maxHeight: 160, overflow: 'auto', borderBottom: 1, borderColor: 'divider' }}>
+        <summary>{importReport.length} files or folders skipped during import</summary>
+        {importReport.map((item, index) => <Typography key={index} variant="caption" display="block">{item}</Typography>)}
+      </Box>}
       {/* Top action toolbar (Hidden when editor is fullscreen) */}
       {!isEditorFullscreen && (
         <Stack
           direction="row"
-          alignItems="center"
           spacing={1}
           useFlexGap
-          flexWrap="wrap"
-          sx={{ px: 2, py: 1.1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', flexShrink: 0 }}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', px: 2, py: 1.1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', flexShrink: 0 }}
         >
+          <Button size="small" startIcon={importBusy ? <CircularProgress size={14} /> : <FolderOpen size={15} />} disabled={locked} onClick={handleOpenFolder}>Open folder</Button>
           <Code2 size={19} color="var(--mui-palette-primary-main, #3b82f6)" />
           <TextField
             select
@@ -1174,9 +1073,8 @@ export default function CodeWorkspace({ onModels }) {
             {/* Top Activity Mode Switcher: Explorer vs Source Control */}
             <Stack
               direction="row"
-              alignItems="center"
               spacing={0.5}
-              sx={{
+              sx={{ alignItems: 'center',
                 p: 0.75,
                 borderBottom: 1,
                 borderColor: 'divider',
@@ -1249,7 +1147,7 @@ export default function CodeWorkspace({ onModels }) {
             {/* Sidebar View Body */}
             {sidebarTab === SIDEBAR_TABS.EXPLORER ? (
               <>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 1.5, pt: 1.25, pb: 0.75 }}>
+                <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', px: 1.5, pt: 1.25, pb: 0.75 }}>
                   <Typography sx={caption}>Files · {project?.files?.length || 0}</Typography>
                   <IconButton size="small" aria-label="Add file" disabled={locked} onClick={() => askDialog('file')}>
                     <Plus size={14} />
@@ -1285,6 +1183,8 @@ export default function CodeWorkspace({ onModels }) {
               </>
             ) : (
               <GitSourceControlSidebar
+                key={activeId}
+                disabled={locked}
                 gitState={gitStatus}
                 activePath={activeDiffPath || file?.path}
                 onSelectFile={(p) => {
@@ -1353,8 +1253,7 @@ export default function CodeWorkspace({ onModels }) {
               status={gitStatus.statusByPath[activeDiffPath]?.status}
               onClose={() => setActiveDiffPath(null)}
               onOpenInEditor={() => {
-                setPath(activeDiffPath);
-                setActiveDiffPath(null);
+                selectFile(activeDiffPath);
               }}
               onDiscard={() => handleDiscardFile(activeDiffPath)}
             />
@@ -1382,9 +1281,7 @@ export default function CodeWorkspace({ onModels }) {
               {/* Window Frame Header */}
               <Stack
                 direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{
+                sx={{ alignItems: 'center', justifyContent: 'space-between',
                   px: 2,
                   py: 0.75,
                   borderBottom: 1,
@@ -1394,16 +1291,16 @@ export default function CodeWorkspace({ onModels }) {
                 }}
               >
                 {/* Left: Window Controls + File Path Pill */}
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0, flex: 1 }}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0, flex: 1 }}>
                   {editorSettings.windowControls === 'mac' && (
-                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ pl: 0.5, flexShrink: 0 }}>
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', pl: 0.5, flexShrink: 0 }}>
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: '#ff5f56', border: '1px solid rgba(0,0,0,0.1)' }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: '#ffbd2e', border: '1px solid rgba(0,0,0,0.1)' }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: '#27c93f', border: '1px solid rgba(0,0,0,0.1)' }} />
                     </Stack>
                   )}
                   {editorSettings.windowControls === 'monochrome' && (
-                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ pl: 0.5, flexShrink: 0 }}>
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', pl: 0.5, flexShrink: 0 }}>
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: 'text.disabled', opacity: 0.5 }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: 'text.disabled', opacity: 0.5 }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: 'text.disabled', opacity: 0.5 }} />
@@ -1443,9 +1340,9 @@ export default function CodeWorkspace({ onModels }) {
                 </Stack>
 
                 {/* Right: Actions Bar */}
-                <Stack direction="row" alignItems="center" spacing={0.5}>
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                   {/* Run Code Button */}
-                  <Tooltip title="Run Code in Sandbox / Environment">
+                  <Tooltip title="Run current file locally">
                     <Button
                       size="small"
                       variant="contained"
@@ -1484,6 +1381,7 @@ export default function CodeWorkspace({ onModels }) {
                   <Tooltip title="Format Code Cleanly">
                     <IconButton
                       size="small"
+                      disabled={locked}
                       onClick={handleFormatCode}
                       aria-label="Format code"
                       sx={{ color: 'text.secondary' }}
@@ -1690,9 +1588,7 @@ export default function CodeWorkspace({ onModels }) {
               {/* Status Bar Footer */}
               <Stack
                 direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                sx={{
+                sx={{ justifyContent: 'space-between', alignItems: 'center',
                   px: 2,
                   py: 0.6,
                   borderTop: 1,
@@ -1701,7 +1597,7 @@ export default function CodeWorkspace({ onModels }) {
                   fontSize: '0.75rem',
                 }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center">
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
                     Ln {cursorPos.line}, Col {cursorPos.col}
                   </Typography>
@@ -1718,7 +1614,7 @@ export default function CodeWorkspace({ onModels }) {
                   </Typography>
                 </Stack>
 
-                <Stack direction="row" spacing={1.5} alignItems="center">
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                   <Button
                     size="small"
                     color={terminalHistory.length > 0 || consoleLogs.length > 0 ? 'primary' : 'inherit'}
@@ -1765,7 +1661,7 @@ export default function CodeWorkspace({ onModels }) {
             </Box>
           ) : (
             /* Clean Empty Workspace State */
-            <Stack spacing={2.5} alignItems="center" justifyContent="center" sx={{ flex: 1, p: 4, textAlign: 'center' }}>
+            <Stack spacing={2.5} sx={{ alignItems: 'center', justifyContent: 'center', flex: 1, p: 4, textAlign: 'center' }}>
               <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 3, color: 'primary.main', bgcolor: 'action.hover' }}>
                 <Code2 size={40} />
               </Box>
@@ -1773,9 +1669,9 @@ export default function CodeWorkspace({ onModels }) {
                 Code Workspace
               </Typography>
               <Typography color="text.secondary" sx={{ maxWidth: 420, fontSize: '0.88rem', lineHeight: 1.6 }}>
-                Create a new file, explore a starter template, or import an existing project archive (.zip or .json).
+                Select a file in Explorer, open a project folder, or import a ZIP / JSON archive.
               </Typography>
-              <Stack direction="row" spacing={1.5} flexWrap="wrap" justifyContent="center">
+              <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', justifyContent: 'center' }}>
                 <Button variant="contained" disabled={locked} startIcon={<Plus size={15} />} onClick={() => askDialog('file')}>
                   New File
                 </Button>
@@ -1841,7 +1737,7 @@ export default function CodeWorkspace({ onModels }) {
 
             {/* Collapsed Rail View */}
             {rightSidebarCollapsed ? (
-              <Stack alignItems="center" spacing={2} sx={{ pt: 1.5, height: '100%' }}>
+              <Stack spacing={2} sx={{ alignItems: 'center', pt: 1.5, height: '100%' }}>
                 <Tooltip title="Expand Right Panel" placement="left">
                   <IconButton size="small" onClick={toggleRightSidebar} sx={{ color: 'text.secondary' }}>
                     <ChevronLeft size={16} />
@@ -1963,7 +1859,7 @@ export default function CodeWorkspace({ onModels }) {
                           borderColor: 'rgba(59, 130, 246, 0.2)',
                         }}
                       >
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                           <Cpu size={15} color="var(--mui-palette-primary-main, #3b82f6)" />
                           <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
                             Code Synthesizer
@@ -1986,12 +1882,13 @@ export default function CodeWorkspace({ onModels }) {
                       {/* Stack selector with chips */}
                       <Box>
                         <Typography sx={{ ...caption, mb: 0.75 }}>Stack / Language</Typography>
-                        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                        <Stack direction="row" spacing={0.6} useFlexGap sx={{ flexWrap: 'wrap', mb: 1 }}>
                           {STACK_PRESETS.map((tech) => (
                             <Chip
                               key={tech}
                               size="small"
                               label={tech}
+                              disabled={locked}
                               onClick={() => setLanguage(tech)}
                               color={language === tech ? 'primary' : 'default'}
                               variant={language === tech ? 'filled' : 'outlined'}
@@ -2011,7 +1908,7 @@ export default function CodeWorkspace({ onModels }) {
 
                       {/* Prompt input with quick inspiration chips */}
                       <Box>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                           <Typography sx={caption}>
                             {project.files.length ? 'Modification Prompt' : 'New Project Prompt'}
                           </Typography>
@@ -2020,7 +1917,9 @@ export default function CodeWorkspace({ onModels }) {
                           </Typography>
                         </Stack>
 
+                        <Box onDragOver={(event) => event.preventDefault()} onDrop={handlePromptDrop}>
                         <TextField
+                          slotProps={{ htmlInput: { 'aria-label': 'Coding assistant prompt' } }}
                           placeholder="Describe desired modifications, features, bug fixes, or new endpoints in detail..."
                           multiline
                           minRows={5}
@@ -2042,8 +1941,26 @@ export default function CodeWorkspace({ onModels }) {
                           }}
                         />
 
+                        </Box>
+                        <Box sx={{ mt: 1.5, p: 1.25, border: '1px dashed', borderColor: 'divider', borderRadius: 2 }} onDragOver={(event) => event.preventDefault()} onDrop={handlePromptDrop}>
+                          <Typography sx={caption}>Attachments · {attachments.length}/20</Typography>
+                          <Stack direction="row" spacing={1} sx={{ my: 1 }}>
+                            <Button size="small" startIcon={<Paperclip size={14} />} disabled={locked} onClick={() => attachmentInputRef.current?.click()}>Attach files</Button>
+                            <Button size="small" startIcon={<FolderOpen size={14} />} disabled={locked} onClick={() => attachmentFolderRef.current?.click()}>Attach folder</Button>
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary">Drop source or text files here (512 KB each). Sent as reference to the selected model.</Typography>
+                          {attachments.map((item) => <Stack key={item.id} direction="row" sx={{ alignItems: 'center', mt: 1, minWidth: 0 }}>
+                            <Tooltip title={item.path}><Typography variant="caption" noWrap sx={{ flex: 1 }}>{item.path} · {(item.size / 1024).toFixed(1)} KB</Typography></Tooltip>
+                            <IconButton size="small" aria-label={`Remove attachment ${item.path}`} disabled={locked} onClick={() => setAttachments((previous) => previous.filter((file) => file.id !== item.id))}><X size={13} /></IconButton>
+                          </Stack>)}
+                          {attachments.length > 0 && <Button size="small" disabled={locked} onClick={() => setAttachments([])}>Clear attachments</Button>}
+                        </Box>
+                        <TextField select fullWidth size="small" label="Project context" value={contextMode} disabled={locked} onChange={(event) => setContextMode(event.target.value)} sx={{ mt: 2 }}>
+                          <MenuItem value="project">All {project.files.length} files</MenuItem><MenuItem value="open">Open tabs only ({openPaths.length} files)</MenuItem>
+                        </TextField>
+                        <Typography variant="caption" color="text.secondary">For large projects, open the files you want to change and select open tabs only.</Typography>
                         {/* Quick prompt inspiration pills */}
-                        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                        <Stack direction="row" spacing={0.6} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
                           {[
                             { label: '+ Add Unit Tests', text: 'Generate comprehensive unit tests with edge cases.' },
                             { label: '+ Refactor Code', text: 'Refactor code into clean, modular, and maintainable functions.' },
@@ -2054,6 +1971,7 @@ export default function CodeWorkspace({ onModels }) {
                               key={pill.label}
                               size="small"
                               label={pill.label}
+                              disabled={locked}
                               onClick={() => setPrompt((prev) => (prev ? `${prev}\n${pill.text}` : pill.text))}
                               sx={{
                                 fontSize: '0.68rem',
@@ -2110,10 +2028,10 @@ export default function CodeWorkspace({ onModels }) {
                       {/* Last Change Summary */}
                       {project.summary && (
                         <Box sx={{ p: 1.75, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
                             <Typography sx={caption}>Last Change</Typography>
                             {project.previous && (
-                              <Button size="small" startIcon={<Undo2 size={12} />} onClick={() => askDialog('undo')} sx={{ py: 0.1, px: 0.6, fontSize: '0.68rem', textTransform: 'none' }}>
+                              <Button size="small" startIcon={<Undo2 size={12} />} disabled={locked} onClick={() => askDialog('undo')} sx={{ py: 0.1, px: 0.6, fontSize: '0.68rem', textTransform: 'none' }}>
                                 Restore
                               </Button>
                             )}
@@ -2148,7 +2066,7 @@ export default function CodeWorkspace({ onModels }) {
                       </Box>
 
                       {/* Filter chips: All / Open / Resolved */}
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                         <Chip
                           size="small"
                           label={`All (${scopedComments.length})`}
@@ -2268,8 +2186,8 @@ export default function CodeWorkspace({ onModels }) {
                               }}
                             >
                               {/* Header: Line/file chip + status + delete icon */}
-                              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mb: 0.75 }}>
-                                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0, flexWrap: 'wrap' }}>
+                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0, flexWrap: 'wrap' }}>
                                   <Chip
                                     size="small"
                                     label={item.from ? `Ln ${item.from}${item.to !== item.from ? `–${item.to}` : ''}` : 'File'}
@@ -2354,7 +2272,7 @@ export default function CodeWorkspace({ onModels }) {
                               </Typography>
 
                               {/* Card footer: timestamp & resolve/reopen button */}
-                              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1, pt: 0.75, borderTop: '1px solid', borderColor: 'divider' }}>
+                              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 1, pt: 0.75, borderTop: '1px solid', borderColor: 'divider' }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
                                   {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                 </Typography>

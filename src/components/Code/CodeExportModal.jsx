@@ -147,7 +147,7 @@ export default function CodeExportModal({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Camera size={18} color={theme.palette.primary.main} />
           <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700 }}>
             Carbon Code Snippet Studio
@@ -161,7 +161,7 @@ export default function CodeExportModal({
       <DialogContent dividers sx={{ p: 2 }}>
         {/* Controls Toolbar */}
         <Stack spacing={2} sx={{ mb: 2.5 }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: 'center' }}>
             {selectedCode && (
               <RadioGroup
                 row
@@ -234,11 +234,11 @@ export default function CodeExportModal({
           </Stack>
 
           {/* Padding Presets & Slider */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'center' }}>
             <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', minWidth: 60 }}>
               Padding: {padding}px
             </Typography>
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ flex: 1 }}>
+            <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', flex: 1 }}>
               {PADDING_PRESETS.map((p) => (
                 <Chip
                   key={p}
@@ -264,7 +264,7 @@ export default function CodeExportModal({
           </Stack>
 
           {/* Additional toggles: Line numbers, Watermark, Font size */}
-          <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
+          <Stack direction="row" spacing={3} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <FormControlLabel
               control={<Switch size="small" checked={showLineNumbers} onChange={(e) => setShowLineNumbers(e.target.checked)} />}
               label={<Typography variant="caption">Line Numbers</Typography>}
@@ -273,7 +273,7 @@ export default function CodeExportModal({
               control={<Switch size="small" checked={showWatermark} onChange={(e) => setShowWatermark(e.target.checked)} />}
               label={<Typography variant="caption">Watermark</Typography>}
             />
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <Typography variant="caption" color="text.secondary">Font Size:</Typography>
               {[12, 13, 14, 16].map((s) => (
                 <Chip
@@ -341,14 +341,14 @@ export default function CodeExportModal({
                   }}
                 >
                   {windowStyle === 'mac' && (
-                    <Stack direction="row" spacing={0.8} alignItems="center">
+                    <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: '#ff5f56' }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: '#ffbd2e' }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: '#27c93f' }} />
                     </Stack>
                   )}
                   {windowStyle === 'monochrome' && (
-                    <Stack direction="row" spacing={0.8} alignItems="center">
+                    <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: 'rgba(255, 255, 255, 0.3)' }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: 'rgba(255, 255, 255, 0.3)' }} />
                       <Box sx={{ width: 11, height: 11, borderRadius: '50%', bgcolor: 'rgba(255, 255, 255, 0.3)' }} />

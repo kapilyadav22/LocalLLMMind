@@ -118,6 +118,7 @@ export function resolveModelProvider(modelId, localModels = []) {
   const prefixMatch = modelId.match(/^([a-z0-9_-]+):(.*)$/);
   if (prefixMatch) {
     const [, prefix, raw] = prefixMatch;
+    if (prefix === PROVIDERS.OLLAMA) return { provider: PROVIDERS.OLLAMA, rawModel: raw };
     const matched = PROVIDER_CONFIGS.find((p) => p.id === prefix);
     if (matched) {
       return { provider: matched.id, rawModel: raw };

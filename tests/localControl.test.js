@@ -79,3 +79,13 @@ test('runs code in a temporary directory and captures stdout/stderr', async (t) 
   assert.match(res.data.stdout, /Hello from python test/);
 });
 
+test('terminal commands retain generated files across calls and preserve program exit status', async (t) => {
+  const { handler, token } = await fixture(t);
+  const body = { projectId: 'session-test', files: [{ path: 'make.cjs', content: 'require("node:fs").writeFileSync("created.txt", "persistent"); console.log("done")' }], entryPoint: 'make.cjs' };
+  const run = await request(handler, '/local-api/projects/run', { method: 'POST', token, body });
+  assert.equal(run.status, 200); assert.equal(run.data.exitCode, 0); assert.match(run.data.stdout, /done/);
+  const read = await request(handler, '/local-api/projects/run', { method: 'POST', token, body: { ...body, entryPoint: undefined, command: 'cat created.txt', systemAccess: false } });
+  assert.equal(read.data.stdout, 'persistent'); assert.equal(read.data.workingDirectory, run.data.workingDirectory);
+  const fail = await request(handler, '/local-api/projects/run', { method: 'POST', token, body: { ...body, files: [{ path: 'make.cjs', content: 'console.error("expected failure"); process.exit(7)' }] } });
+  assert.equal(fail.data.exitCode, 7); assert.match(fail.data.stderr, /expected failure/);
+});

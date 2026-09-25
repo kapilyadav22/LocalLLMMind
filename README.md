@@ -279,3 +279,16 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 Copyright © 2026 Kapil Kumar Yadav. All rights reserved.
 
+
+### Code workspace: opening projects and adding context
+
+- Use **Code → Open folder** to import a local source folder, or **Import** for a ZIP or exported project JSON. GitHub-style ZIPs are unwrapped automatically. Relative paths, source text, and exported review comments are preserved.
+- The workspace keeps an editable copy in this browser. It does not overwrite the folder you selected. Use **ZIP**, **Save to disk**, or **Open in IDE** to take the edited files back to disk.
+- Imports support up to 2,000 UTF-8 source files / 20 MB total (2 MB per file, 30 MB compressed ZIP). Dependency folders, build output, editor metadata, binary assets, and local credential files are skipped, with a visible import report. This is a source editor, not a binary-asset manager.
+- In **AI Assistant**, use **Attach files**, **Attach folder**, or drag text/source files onto the prompt area. Remove individual attachments or clear them all. Attachments are read-only model context, not project files, and are cleared when switching projects. Up to 20 attachments of 512 KB each are supported. Context is sent to the selected provider; choose Ollama to keep generation local.
+- For larger projects, use **Project context → Open tabs only**. File paths remain available to the assistant, while file contents are limited to the selected scope. Combined context is limited to 120,000 characters; individual AI proposals remain limited to 80 files / 2 MB and always require review before applying.
+- **Run** executes supported source files in a local project copy. **Terminal** preserves files and installed dependencies between commands during the same server session. Each command starts at the project root. Program output, nonzero exit codes, and timeouts are shown explicitly. The run copy is separate from the editable browser copy; reimport generated files to edit them. Use your IDE for interactive processes or long-running servers.
+- **Format** uses Prettier for JavaScript, TypeScript, JSON, HTML, CSS, Markdown, Vue, and YAML. Other languages remain unchanged and show guidance to use their IDE formatter.
+- The **Git** panel tracks browser-workspace checkpoints, not your original Git repository. Commits include only staged paths; unstaged changes remain visible. Deleted tracked files can be restored from their baseline.
+
+Desktop actions require `npm run dev` or `npm run preview` on localhost. A static/Docker-hosted browser app cannot start programs on your computer. Tests: `npm test`; production build: `npm run build`.

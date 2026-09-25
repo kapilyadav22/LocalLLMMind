@@ -43,16 +43,14 @@ function GitDiffViewerComponent({
       {/* Diff Header Bar */}
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{
+        sx={{ alignItems: 'center', justifyContent: 'space-between',
           px: 2,
           py: 1,
           borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
           bgcolor: '#161b22',
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
           <GitCompare size={16} color="#58a6ff" />
           <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem' }} noWrap>
             {filePath}
@@ -69,7 +67,7 @@ function GitDiffViewerComponent({
           />
         </Stack>
 
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           {onDiscard && (
             <Button
               size="small"

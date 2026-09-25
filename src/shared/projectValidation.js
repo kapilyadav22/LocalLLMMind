@@ -1,5 +1,5 @@
-export const MAX_PROJECT_BYTES = 2 * 1024 * 1024;
-export const MAX_FILES = 80;
+export const MAX_PROJECT_BYTES = 20 * 1024 * 1024;
+export const MAX_FILES = 2000;
 
 export function validateFilePath(path) {
   if (typeof path !== 'string' || !path || path.length > 240 || path !== path.trim()) {
@@ -15,9 +15,9 @@ export function validateFilePath(path) {
   return path;
 }
 
-export function validateFiles(files) {
-  if (!Array.isArray(files) || files.length < 1 || files.length > MAX_FILES) {
-    throw new Error(`A project must contain 1–${MAX_FILES} text files.`);
+export function validateFiles(files, { maxFiles = MAX_FILES, maxBytes = MAX_PROJECT_BYTES } = {}) {
+  if (!Array.isArray(files) || files.length < 1 || files.length > maxFiles) {
+    throw new Error(`A project must contain 1–${maxFiles} text files.`);
   }
   const seen = new Set();
   let bytes = 0;
@@ -36,7 +36,7 @@ export function validateFiles(files) {
       if (seen.has(parts.join('/'))) throw new Error('A file cannot also be a directory.');
     }
   }
-  if (bytes > MAX_PROJECT_BYTES) throw new Error('Projects are limited to 2 MB of text.');
+  if (bytes > maxBytes) throw new Error(`Projects are limited to ${maxBytes / 1024 / 1024} MB of text.`);
   return files.map(({ path, content }) => ({ path, content }));
 }
 
@@ -68,5 +68,5 @@ export function parseProposal(text) {
       throw new Error('The model returned incomplete or invalid JSON. Try again with a smaller request or a coding model. Your files are unchanged.');
     }
   }
-  return { summary: typeof data?.summary === 'string' ? data.summary.slice(0, 4000) : 'Proposed project files', files: validateFiles(data?.files) };
+  return { summary: typeof data?.summary === 'string' ? data.summary.slice(0, 4000) : 'Proposed project files', files: validateFiles(data?.files, { maxFiles: 80, maxBytes: 2 * 1024 * 1024 }) };
 }

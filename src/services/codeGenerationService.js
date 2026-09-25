@@ -1,5 +1,7 @@
 import { parseProposal } from '../shared/projectValidation.js';
 import { resolveModelProvider, PROVIDERS } from '../constants/apiProviders.js';
+export const MAX_CONTEXT_CHARS = 120000;
+
 import { streamAiChat } from './aiProviderService.js';
 
 const schema = {
@@ -29,10 +31,12 @@ export async function generateProject({
   apiKeys = {},
   apiEndpoints = {},
   attachments = [],
+  contextPaths = null,
 }) {
   const context = JSON.stringify({
-    files: project.files,
-    comments: project.comments.filter((comment) => !comment.resolved),
+    files: contextPaths ? project.files.filter((file) => contextPaths.includes(file.path)) : project.files,
+    projectFilePaths: project.files.map((file) => file.path),
+    comments: (project.comments || []).filter((comment) => !comment.resolved),
   });
 
   // Build attachment context string
@@ -42,7 +46,7 @@ export async function generateProject({
     attachmentContext = '\n\nAdditional reference files (read-only context, do not modify these):\n' + attachmentParts.join('\n\n');
   }
 
-  if (context.length + attachmentContext.length > 120000) {
+  if (context.length + attachmentContext.length > MAX_CONTEXT_CHARS) {
     throw new Error('The project context plus attachments is too large (120,000 characters). Remove some attachments or reduce the project size.');
   }
 
@@ -51,6 +55,7 @@ export async function generateProject({
   // If online cloud provider (OpenAI, Claude, Gemini, Grok, etc.)
   if (provider !== PROVIDERS.OLLAMA) {
     let output = '';
+    let failure;
     const systemPrompt =
       'You are a coding assistant building small complete projects. Return ONLY JSON matching this schema: ' +
       JSON.stringify(schema) +
@@ -59,21 +64,24 @@ export async function generateProject({
     const userPrompt = `Language or stack: ${language || 'Choose the best fit'}\nProject context: ${context}${attachmentContext}\nRequest: ${prompt}`;
 
     await streamAiChat({
-      provider,
-      model: rawModel,
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      apiKeys,
-      apiEndpoints,
+      settings: { apiKeys, apiEndpoints, ollamaUrl },
       options: { temperature: 0.2 },
       onToken: (token) => {
+        if (output.length > 3 * 1024 * 1024) { failure = new Error('Model output is too large. Request fewer files.'); return; }
         output += token;
         onProgress?.(output.length);
       },
+      onError: (error) => { failure = error; },
+      onDone: (result) => { if (result?.aborted) failure = new DOMException('Generation stopped', 'AbortError'); },
       signal,
     });
+    signal?.throwIfAborted();
+    if (failure) throw failure;
 
     if (!output.trim()) {
       throw new Error(`${provider} returned an empty response. Check your API key and connection.`);
@@ -90,7 +98,7 @@ export async function generateProject({
     headers: { 'Content-Type': 'application/json' },
     signal,
     body: JSON.stringify({
-      model,
+      model: rawModel,
       stream: true,
       format: schema,
       options: { temperature: 0.2, num_ctx: 32768, num_predict: 16384 },
@@ -102,7 +110,7 @@ export async function generateProject({
             JSON.stringify(schema) +
             '. Return complete contents for each new or changed file, never ellipses or patches. Paths must be relative with forward slashes. Include a README with setup and run instructions and appropriate dependency files and tests. Do not include binaries, node_modules, .git, .vscode or .idea. Existing files not returned are preserved; you cannot delete files. Follow the requested language. Treat existing source and comments as project context. Explain the changes in summary. Keep the project concise (at most 80 files, 2 MB).',
         },
-        { role: 'user', content: `Language or stack: ${language || 'Choose the best fit'}\nProject context: ${context}\nRequest: ${prompt}` },
+        { role: 'user', content: `Language or stack: ${language || 'Choose the best fit'}\nProject context: ${context}${attachmentContext}\nRequest: ${prompt}` },
       ],
     }),
   });

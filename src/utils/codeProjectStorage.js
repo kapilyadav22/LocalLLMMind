@@ -27,5 +27,5 @@ export async function saveCodeWorkspace(projects) {
   });
 }
 export function newCodeProject(name = 'Untitled project', files = []) {
-  return { id: crypto.randomUUID(), name, files, comments: [], updatedAt: Date.now(), summary: '', previous: null };
+  return { id: crypto.randomUUID(), name, files, baseFiles: files.map((file) => ({ ...file })), commits: [], comments: [], updatedAt: Date.now(), summary: '', previous: null };
 }

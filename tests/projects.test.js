@@ -11,7 +11,7 @@ test('accepts nested source and common dotfiles', () => {
 test('rejects duplicate, colliding and oversized projects', () => {
   assert.throws(() => validateFiles([{ path: 'a', content: '' }, { path: 'A', content: '' }]));
   assert.throws(() => validateFiles([{ path: 'a', content: '' }, { path: 'a/b', content: '' }]));
-  assert.throws(() => validateFiles([{ path: 'a', content: 'x'.repeat(2 * 1024 * 1024 + 1) }]));
+  assert.throws(() => validateFiles([{ path: 'a', content: 'x'.repeat(20 * 1024 * 1024 + 1) }]));
 });
 test('merges changed files without removing files or mutating originals', () => {
   const original = [{ path: 'a.py', content: 'old' }, { path: 'README.md', content: 'keep' }];

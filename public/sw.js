@@ -49,7 +49,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   // Skip Ollama API calls (always need fresh data)
-  if (url.pathname.startsWith('/api/')) return;
+  if ((url.pathname.startsWith('/api/') || url.pathname.startsWith('/local-api/'))) return;
 
   // Skip WebSocket and browser-extension requests
   if (url.protocol === 'chrome-extension:' || url.protocol === 'ws:' || url.protocol === 'wss:') return;

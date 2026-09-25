@@ -58,7 +58,7 @@ async function readJson(req) {
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_PROJECT_BYTES * 3) throw new Error('Request exceeds 6 MB.');
+    if (size > MAX_PROJECT_BYTES * 3) throw new Error('Request exceeds the maximum project request size.');
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString());
@@ -76,6 +76,7 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
   const token = randomBytes(32).toString('hex');
   const workspaceRoot = path.resolve(root, '.local-workspaces');
   const snapshots = new Map();
+  const runSessions = new Map();
   let starting;
   async function startOllama() {
     if (await probe()) return { running: true, message: 'Ollama is already running.' };
@@ -145,7 +146,8 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
         return send(200, { opened: true, path: directory });
       }
       if (route === '/local-api/projects/run') {
-        const files = validateFiles(data.files);
+        const files = Array.isArray(data.files) && !data.files.length ? [] : validateFiles(data.files);
+        if (data.projectId && !/^[a-zA-Z0-9-]{1,80}$/.test(data.projectId)) throw new Error('Invalid project session.');
         let cmd = null;
         let args = [];
         let useShell = false;
@@ -169,6 +171,7 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
           if (!cmd) throw new Error(`Executable "${rawCmd}" was not found on this system.`);
         } else if (data.entryPoint) {
           validateFilePath(data.entryPoint);
+          if (!files.some((file) => file.path === data.entryPoint)) throw new Error('Entry point is not in this project.');
           const ext = path.extname(data.entryPoint).toLowerCase();
           if (['.py'].includes(ext)) {
             cmd = (await executable('python3')) || (await executable('python'));
@@ -178,8 +181,13 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
             cmd = await executable('node');
             if (!cmd) throw new Error('node is not installed or not in PATH.');
             args = [data.entryPoint];
+          } else if (['.ts', '.sh', '.bash', '.go', '.rb'].includes(ext)) {
+            const runtime = { '.ts': 'node', '.sh': 'bash', '.bash': 'bash', '.go': 'go', '.rb': 'ruby' }[ext];
+            cmd = await executable(runtime);
+            if (!cmd) throw new Error(`${runtime} is not installed or not in PATH.`);
+            args = ext === '.go' ? ['run', data.entryPoint] : ext === '.ts' ? ['--experimental-strip-types', data.entryPoint] : [data.entryPoint];
           } else {
-            throw new Error(`Running ${ext} files is not supported.`);
+            throw new Error(`Running ${ext} files directly is not supported. Use the terminal with the project's build command.`);
           }
         } else {
           throw new Error('entryPoint or command required.');
@@ -190,15 +198,39 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
           throw new Error('Workspace directory must not be a symbolic link.');
         }
 
-        const id = randomUUID();
-        const directory = await mkdtemp(path.join(workspaceRoot, `run-${id}-`));
-
+        let session = data.projectId ? runSessions.get(data.projectId) : null;
+        if (session?.busy) throw new Error('A command is already running for this project.');
+        if (!session) {
+          const directory = await mkdtemp(path.join(workspaceRoot, `run-${randomUUID()}-`));
+          session = { directory, files: new Map(), busy: false };
+          if (data.projectId) runSessions.set(data.projectId, session);
+        }
+        const { directory } = session;
+        if (await realpath(directory) !== directory) throw new Error('Run directory must not be a symbolic link.');
+        session.busy = true;
         try {
+          // Keep installed dependencies between commands; only synchronize editor-owned files.
+          const incoming = new Set(files.map((file) => file.path));
+          for (const previous of session.files.keys()) {
+            if (!incoming.has(previous)) {
+              const parent = path.dirname(path.join(directory, previous));
+              if (await realpath(parent) !== parent) throw new Error('Cannot synchronize through a symbolic link.');
+              await rm(path.join(directory, previous), { force: true });
+            }
+          }
           for (const file of files) {
             const destination = path.join(directory, file.path);
-            await mkdir(path.dirname(destination), { recursive: true });
-            await writeFile(destination, file.content, { flag: 'wx' });
+            let current = directory;
+            for (const part of file.path.split('/').slice(0, -1)) {
+              current = path.join(current, part);
+              await mkdir(current, { recursive: true });
+              if ((await lstat(current)).isSymbolicLink()) throw new Error('Cannot synchronize a symbolic link.');
+            }
+            const existing = await lstat(destination).catch(() => null);
+            if (existing?.isSymbolicLink() || (existing && !existing.isFile())) throw new Error('Cannot synchronize a non-file.');
+            if (session.files.get(file.path) !== file.content || !existing) await writeFile(destination, file.content);
           }
+          session.files = new Map(files.map((file) => [file.path, file.content]));
 
           const enhancedPath = [...new Set([...(process.env.PATH || '').split(path.delimiter), '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', '/usr/bin', '/bin'])].join(path.delimiter);
           const start = Date.now();
@@ -208,7 +240,8 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
             const spawnOptions = {
               cwd: directory,
               shell: useShell,
-              timeout: useShell ? 60000 : 30000,
+              detached: process.platform !== 'win32',
+              stdio: ['ignore', 'pipe', 'pipe'],
               env: {
                 ...process.env,
                 PATH: enhancedPath,
@@ -218,26 +251,37 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
 
             const child = useShell ? spawn(cmd, spawnOptions) : spawn(cmd, args, spawnOptions);
 
+            let timedOut = false;
+            const timer = setTimeout(() => {
+              timedOut = true;
+              try {
+                if (process.platform === 'win32') child.kill('SIGKILL');
+                else process.kill(-child.pid, 'SIGKILL');
+              } catch { child.kill('SIGKILL'); }
+            }, useShell ? 60000 : 30000);
             child.stdout?.on('data', (d) => {
-              if (out.length < 50000) out += d.toString();
+              out = (out + d.toString()).slice(0, 50000);
             });
             child.stderr?.on('data', (d) => {
-              if (err.length < 50000) err += d.toString();
+              err = (err + d.toString()).slice(0, 50000);
             });
 
             child.once('error', (e) => {
+              clearTimeout(timer);
               resolve({ stdout: out, stderr: `${err}\n${e.message}`.trim(), exitCode: 1 });
             });
 
-            child.once('exit', (code) => {
-              resolve({ stdout: out, stderr: err, exitCode: code ?? 0 });
+            child.once('close', (code, signal) => {
+              clearTimeout(timer);
+              resolve({ stdout: out, stderr: timedOut ? `${err}\nCommand timed out.` : signal ? `${err}\nStopped by ${signal}.` : err, exitCode: timedOut ? 124 : code ?? 1 });
             });
           });
 
           const durationMs = Date.now() - start;
-          return send(200, { stdout, stderr, exitCode, durationMs });
+          return send(200, { stdout, stderr, exitCode, durationMs, workingDirectory: directory });
         } finally {
-          await rm(directory, { recursive: true, force: true }).catch(() => {});
+          session.busy = false;
+          if (!data.projectId) await rm(directory, { recursive: true, force: true }).catch(() => {});
         }
       }
       return send(404, { error: 'Unknown local action.' });

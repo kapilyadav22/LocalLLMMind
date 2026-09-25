@@ -586,7 +586,7 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           <ChatView onOpenSettings={(tabIdx = 1) => { setSettingsInitialTab(tabIdx); setSettingsOpen(true); }} />
         </Box>
         {codeOpened && <Box sx={{ display: mode === 'code' ? 'flex' : 'none', flex: 1, minHeight: 0 }}>
-          <Suspense fallback={<LinearProgress sx={{ width: '100%' }} />}><CodeWorkspace onModels={() => setModelManagerOpen(true)} /></Suspense>
+          <Suspense fallback={<LinearProgress sx={{ width: '100%' }} />}><CodeWorkspace active={mode === 'code'} onModels={() => setModelManagerOpen(true)} /></Suspense>
         </Box>}
       </Box>
 

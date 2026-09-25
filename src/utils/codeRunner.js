@@ -1,62 +1,9 @@
 /**
- * Code runner supporting both native local execution (via local-api python3/node)
- * and client-side sandboxed execution (JavaScript, Web preview, JSON).
+ * Native local execution with explicit errors, sandboxed HTML preview, and JSON validation.
  */
-import { localAction } from '../services/localControlService';
+import { localAction } from '../services/localControlService.js';
 
-let pyodideInstance = null;
-let pyodideLoadingPromise = null;
-
-async function loadPyodideAsync() {
-  if (pyodideInstance) return pyodideInstance;
-  if (pyodideLoadingPromise) return pyodideLoadingPromise;
-
-  pyodideLoadingPromise = new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error('Pyodide CDN timed out. Ensure internet connectivity or run app with npm run dev.'));
-    }, 10000);
-
-    if (window.loadPyodide) {
-      window.loadPyodide()
-        .then((py) => {
-          clearTimeout(timeout);
-          pyodideInstance = py;
-          resolve(py);
-        })
-        .catch((err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js';
-    script.async = true;
-    script.onload = async () => {
-      try {
-        const py = await window.loadPyodide({
-          indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/',
-        });
-        clearTimeout(timeout);
-        pyodideInstance = py;
-        resolve(py);
-      } catch (err) {
-        clearTimeout(timeout);
-        reject(err);
-      }
-    };
-    script.onerror = () => {
-      clearTimeout(timeout);
-      reject(new Error('Failed to load Pyodide WebAssembly runtime from CDN.'));
-    };
-    document.head.appendChild(script);
-  });
-
-  return pyodideLoadingPromise;
-}
-
-export async function runCodeSnippet({ code, path = '', allFiles = [] }) {
+export async function runCodeSnippet({ code, path = '', allFiles = [], projectId }) {
   const start = performance.now();
   const ext = path.split('.').pop()?.toLowerCase() || '';
 
@@ -80,21 +27,8 @@ export async function runCodeSnippet({ code, path = '', allFiles = [] }) {
         filesToSend.push({ path, content: code });
       }
 
-      let runCommand = null;
-      if (['py', 'python'].includes(ext)) runCommand = `python3 "${path}"`;
-      else if (['js', 'mjs', 'cjs'].includes(ext)) runCommand = `node "${path}"`;
-      else if (['ts', 'tsx'].includes(ext)) runCommand = `node --loader ts-node/esm "${path}" || npx -y tsx "${path}"`;
-      else if (['sh', 'bash'].includes(ext)) runCommand = `bash "${path}"`;
-      else if (['go'].includes(ext)) runCommand = `go run "${path}"`;
-      else if (['rs'].includes(ext)) runCommand = `cargo run || rustc "${path}" -o temp_bin && ./temp_bin`;
-      else if (['rb'].includes(ext)) runCommand = `ruby "${path}"`;
-
-      if (runCommand) {
-        const result = await localAction('projects/run', {
-          command: runCommand,
-          files: filesToSend,
-          systemAccess: true,
-        });
+      {
+        const result = await localAction('projects/run', { entryPoint: path, files: filesToSend, projectId });
 
         const logs = [];
         if (result.stdout) {
@@ -119,110 +53,7 @@ export async function runCodeSnippet({ code, path = '', allFiles = [] }) {
         };
       }
     } catch (localErr) {
-      console.warn('Native local execution unavailable or failed:', localErr.message);
-      // Fall through to in-browser execution
-    }
-  }
-
-  // 3. Client-side JavaScript Execution
-  if (['js', 'mjs', 'cjs', 'ts'].includes(ext)) {
-    const logs = [];
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
-    const originalInfo = console.info;
-
-    try {
-      console.log = (...args) => logs.push({ type: 'log', text: args.map(formatArg).join(' ') });
-      console.warn = (...args) => logs.push({ type: 'warn', text: args.map(formatArg).join(' ') });
-      console.error = (...args) => logs.push({ type: 'error', text: args.map(formatArg).join(' ') });
-      console.info = (...args) => logs.push({ type: 'info', text: args.map(formatArg).join(' ') });
-
-      const runner = new Function(code);
-      const result = runner();
-
-      if (result !== undefined) {
-        logs.push({ type: 'return', text: `=> ${formatArg(result)}` });
-      }
-
-      const duration = Math.round(performance.now() - start);
-      return {
-        success: true,
-        logs: logs.length ? logs : [{ type: 'info', text: 'Code executed successfully with no output.' }],
-        durationMs: duration,
-        exitCode: 0,
-      };
-    } catch (err) {
-      const duration = Math.round(performance.now() - start);
-      return {
-        success: false,
-        logs: [...logs, { type: 'error', text: `${err.name}: ${err.message}` }],
-        durationMs: duration,
-        exitCode: 1,
-      };
-    } finally {
-      console.log = originalLog;
-      console.warn = originalWarn;
-      console.error = originalError;
-      console.info = originalInfo;
-    }
-  }
-
-  // 4. Client-side Pyodide WASM fallback for Python (if native local runner wasn't reachable)
-  if (['py', 'python'].includes(ext)) {
-    try {
-      const py = await loadPyodideAsync();
-      const logs = [];
-
-      py.setStdout({
-        batched: (text) => {
-          if (text) logs.push({ type: 'log', text });
-        },
-      });
-      py.setStderr({
-        batched: (text) => {
-          if (text) logs.push({ type: 'error', text });
-        },
-      });
-
-      if (allFiles.length > 0) {
-        for (const f of allFiles) {
-          try {
-            const parts = f.path.split('/');
-            if (parts.length > 1) {
-              const dir = parts.slice(0, -1).join('/');
-              py.FS.mkdirTree(dir);
-            }
-            py.FS.writeFile(f.path, f.path === path ? code : f.content);
-          } catch {
-            // ignore
-          }
-        }
-      }
-
-      const result = await py.runPythonAsync(code);
-      if (result !== undefined && result !== null) {
-        const repr = typeof result.toString === 'function' ? result.toString() : String(result);
-        if (repr && repr !== 'None') {
-          logs.push({ type: 'return', text: `=> ${repr}` });
-        }
-      }
-
-      const duration = Math.round(performance.now() - start);
-      return {
-        success: true,
-        logs: logs.length ? logs : [{ type: 'info', text: 'Program completed with no terminal output.' }],
-        durationMs: duration,
-        exitCode: 0,
-      };
-    } catch (err) {
-      const duration = Math.round(performance.now() - start);
-      return {
-        success: false,
-        logs: [{ type: 'error', text: `Python execution failed: ${err.message}` }],
-        durationMs: duration,
-        exitCode: 1,
-      };
+      return { success: false, logs: [{ type: 'error', text: localErr.message }], durationMs: Math.round(performance.now() - start), exitCode: 1 };
     }
   }
 
@@ -254,7 +85,7 @@ export async function runCodeSnippet({ code, path = '', allFiles = [] }) {
   };
 }
 
-export async function runTerminalCommand({ command, allFiles = [], systemAccess = true }) {
+export async function runTerminalCommand({ command, allFiles = [], systemAccess = true, projectId }) {
   const start = performance.now();
   const trimmed = String(command || '').trim();
   if (!trimmed) {
@@ -266,6 +97,7 @@ export async function runTerminalCommand({ command, allFiles = [], systemAccess 
       command: trimmed,
       files: allFiles,
       systemAccess,
+      projectId,
     });
 
     const logs = [];
@@ -297,15 +129,4 @@ export async function runTerminalCommand({ command, allFiles = [], systemAccess 
       exitCode: 1,
     };
   }
-}
-
-function formatArg(arg) {
-  if (typeof arg === 'object' && arg !== null) {
-    try {
-      return JSON.stringify(arg, null, 2);
-    } catch {
-      return String(arg);
-    }
-  }
-  return String(arg);
 }
