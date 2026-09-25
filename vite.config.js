@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { localControlPlugin } from './server/localControl.js';
 
 function webSearchPlugin() {
   return {
@@ -76,7 +77,7 @@ function webSearchPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), webSearchPlugin()],
+  plugins: [localControlPlugin(), react(), webSearchPlugin()],
   server: {
     port: 5173,
     proxy: {

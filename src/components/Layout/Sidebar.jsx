@@ -25,23 +25,28 @@ import {
   useTheme,
   InputAdornment,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import EditIcon from '@mui/icons-material/Edit';
-import SettingsIcon from '@mui/icons-material/Settings';
-import SearchIcon from '@mui/icons-material/Search';
-import DownloadIcon from '@mui/icons-material/Download';
-import KeyboardIcon from '@mui/icons-material/Keyboard';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
-import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
-import PushPinIcon from '@mui/icons-material/PushPin';
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
-import FolderIcon from '@mui/icons-material/Folder';
-import StorageIcon from '@mui/icons-material/Storage';
+import {
+  Plus,
+  PanelLeftClose,
+  X,
+  MessageSquare,
+  MoreHorizontal,
+  Trash2,
+  Edit3,
+  Settings as SettingsIconLucide,
+  Search,
+  Download,
+  Keyboard,
+  ChevronRight,
+  ChevronDown,
+  FolderPlus,
+  FolderInput,
+  Pin,
+  PinOff,
+  Folder,
+  HardDrive,
+  User,
+} from 'lucide-react';
 import ConnectionStatus from '../common/ConnectionStatus';
 import AppLogo from '../common/AppLogo';
 import DeveloperBadge from '../common/DeveloperBadge';
@@ -78,11 +83,15 @@ function groupByDate(conversations) {
 }
 
 export default function Sidebar({
+  onNavigateChat,
   onOpenSettings,
   onOpenShortcuts,
   onOpenGlobalSearch,
   onOpenModelManager,
+  onOpenAboutMe,
   onCloseMobile,
+  onToggleSidebar,
+  isMobile = false,
 }) {
   const theme = useTheme();
   const { state, dispatch } = useChatStore();
@@ -160,16 +169,19 @@ export default function Sidebar({
   );
 
   const handleNewChat = () => {
+    onNavigateChat?.();
     dispatch({ type: 'NEW_CONVERSATION' });
     onCloseMobile?.();
   };
 
   const handleNewChatInProject = (projectId) => {
+    onNavigateChat?.();
     dispatch({ type: 'NEW_CONVERSATION', payload: { projectId } });
     onCloseMobile?.();
   };
 
   const handleSelectConvo = (id) => {
+    onNavigateChat?.();
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id });
     onCloseMobile?.();
   };
@@ -351,32 +363,57 @@ export default function Sidebar({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        bgcolor: alpha(theme.palette.background.paper, 0.6),
-        backdropFilter: 'blur(20px)',
+        bgcolor: 'background.paper',
+        borderRight: '1px solid',
+        borderColor: 'divider',
       }}
     >
       {/* Header */}
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-        <AppLogo size={32} showDeveloper={true} />
-        <Tooltip title="New chat (Cmd+K)">
-          <IconButton
-            onClick={handleNewChat}
-            size="small"
-            sx={{
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              color: 'primary.main',
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.2),
-              },
-            }}
-          >
-            <AddIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      <Box sx={{ p: 2, pb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <AppLogo size={30} showDeveloper={true} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Tooltip title="New chat (Cmd+K)">
+            <IconButton
+              onClick={handleNewChat}
+              size="small"
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+                color: 'primary.main',
+                p: '6px',
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.primary.main, 0.16),
+                },
+              }}
+            >
+              <Plus size={15} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={isMobile ? 'Close sidebar' : 'Hide sidebar (Cmd+B)'}>
+            <IconButton
+              onClick={onToggleSidebar || onCloseMobile}
+              size="small"
+              aria-label={isMobile ? 'Close sidebar' : 'Hide sidebar'}
+              sx={{
+                color: 'text.secondary',
+                bgcolor: alpha(theme.palette.text.primary, 0.04),
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1.5,
+                p: '6px',
+                '&:hover': {
+                  color: 'text.primary',
+                  bgcolor: alpha(theme.palette.text.primary, 0.08),
+                },
+              }}
+            >
+              {isMobile ? <X size={15} /> : <PanelLeftClose size={15} />}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* Search Bar */}
-      <Box sx={{ px: 2, pb: 2 }}>
+      <Box sx={{ px: 2, pb: 1.5 }}>
         <TextField
           size="small"
           placeholder="Search conversations..."
@@ -387,7 +424,7 @@ export default function Sidebar({
             input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Search size={15} color={theme.palette.text.secondary} />
                 </InputAdornment>
               ),
               endAdornment: onOpenGlobalSearch ? (
@@ -400,12 +437,12 @@ export default function Sidebar({
                       sx={{
                         height: 20,
                         fontSize: '0.62rem',
-                        fontWeight: 700,
+                        fontWeight: 600,
                         fontFamily: 'monospace',
                         cursor: 'pointer',
                         bgcolor: alpha(theme.palette.text.primary, 0.06),
                         '&:hover': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.15),
+                          bgcolor: alpha(theme.palette.primary.main, 0.12),
                           color: 'primary.main',
                         },
                       }}
@@ -449,19 +486,13 @@ export default function Sidebar({
                 gap: 1,
               }}
             >
-              <PushPinIcon
-                sx={{
-                  fontSize: 14,
-                  color: 'primary.main',
-                  transform: 'rotate(45deg)',
-                }}
-              />
+              <Pin size={13} style={{ transform: 'rotate(45deg)', color: theme.palette.primary.main }} />
               <Typography
                 variant="caption"
                 sx={{
                   color: 'text.secondary',
-                  fontWeight: 700,
-                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  fontSize: '0.68rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                 }}
@@ -488,14 +519,14 @@ export default function Sidebar({
                     selected={isSelected}
                     onClick={() => handleSelectConvo(convo.id)}
                     sx={{
-                      borderRadius: 2,
+                      borderRadius: 1.5,
                       mb: 0.25,
-                      py: 0.75,
-                      px: 1.25,
+                      py: 0.6,
+                      px: 1,
                       '&.Mui-selected': {
-                        bgcolor: alpha(theme.palette.primary.main, 0.14),
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
                         '&:hover': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.2),
+                          bgcolor: alpha(theme.palette.primary.main, 0.16),
                         },
                       },
                       '&:hover': {
@@ -504,14 +535,8 @@ export default function Sidebar({
                       },
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 26 }}>
-                      <PushPinIcon
-                        sx={{
-                          fontSize: 14,
-                          color: isSelected ? 'primary.main' : 'text.secondary',
-                          transform: 'rotate(45deg)',
-                        }}
-                      />
+                    <ListItemIcon sx={{ minWidth: 24 }}>
+                      <Pin size={12} style={{ transform: 'rotate(45deg)', color: isSelected ? theme.palette.primary.main : theme.palette.text.secondary }} />
                     </ListItemIcon>
                     <ListItemText>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -546,7 +571,7 @@ export default function Sidebar({
                       onClick={(e) => handleMenuOpen(e, convo.id)}
                       sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.15s' }}
                     >
-                      <MoreHorizIcon sx={{ fontSize: 16 }} />
+                      <MoreHorizontal size={14} />
                     </IconButton>
                   </ListItemButton>
                 );
@@ -598,10 +623,10 @@ export default function Sidebar({
                 sx={{
                   p: 0.5,
                   color: 'text.secondary',
-                  '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.1) },
+                  '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) },
                 }}
               >
-                <CreateNewFolderIcon sx={{ fontSize: 17 }} />
+                <FolderPlus size={15} />
               </IconButton>
             </Tooltip>
           </Box>
@@ -617,7 +642,7 @@ export default function Sidebar({
                 mx: 1,
                 my: 0.5,
                 p: 1.25,
-                borderRadius: 2,
+                borderRadius: 1.5,
                 border: '1px dashed',
                 borderColor: 'divider',
                 textAlign: 'center',
@@ -645,36 +670,36 @@ export default function Sidebar({
                   <ListItemButton
                     onClick={() => handleToggleProject(project.id)}
                     sx={{
-                      borderRadius: 2,
-                      py: 0.75,
+                      borderRadius: 1.5,
+                      py: 0.6,
                       px: 1,
-                      bgcolor: hasActiveConvo ? alpha(project.color || '#6366f1', 0.06) : 'transparent',
+                      bgcolor: hasActiveConvo ? alpha(project.color || theme.palette.primary.main, 0.05) : 'transparent',
                       '&:hover': {
                         bgcolor: alpha(theme.palette.text.primary, 0.04),
                         '& .project-actions': { opacity: 1 },
                       },
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 24, mr: 0.75 }}>
+                    <ListItemIcon sx={{ minWidth: 22, mr: 0.5 }}>
                       {isExpanded ? (
-                        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <ChevronDown size={14} color={theme.palette.text.secondary} />
                       ) : (
-                        <ChevronRightIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <ChevronRight size={14} color={theme.palette.text.secondary} />
                       )}
                     </ListItemIcon>
                     <Box
                       sx={{
-                        width: 10,
-                        height: 10,
+                        width: 8,
+                        height: 8,
                         borderRadius: '50%',
-                        bgcolor: project.color || '#6366f1',
-                        mr: 1.25,
+                        bgcolor: project.color || theme.palette.primary.main,
+                        mr: 1,
                         flexShrink: 0,
                       }}
                     />
                     <ListItemText
                       primary={
-                        <Typography variant="body2" noWrap sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                        <Typography variant="body2" noWrap sx={{ fontWeight: 600, fontSize: '0.84rem' }}>
                           {project.name}
                         </Typography>
                       }
@@ -703,7 +728,7 @@ export default function Sidebar({
                           }}
                           sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                         >
-                          <AddIcon sx={{ fontSize: 16 }} />
+                          <Plus size={14} />
                         </IconButton>
                       </Tooltip>
                       <IconButton
@@ -711,14 +736,14 @@ export default function Sidebar({
                         onClick={(e) => handleProjectMenuOpen(e, project.id)}
                         sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                       >
-                        <MoreHorizIcon sx={{ fontSize: 16 }} />
+                        <MoreHorizontal size={14} />
                       </IconButton>
                     </Box>
                   </ListItemButton>
 
                   {/* Project Conversations (Collapsed / Expanded) */}
                   <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                    <List dense disablePadding sx={{ pl: 2.5 }}>
+                    <List dense disablePadding sx={{ pl: 2 }}>
                       {convosInProject.length === 0 ? (
                         <Typography
                           variant="caption"
@@ -740,14 +765,14 @@ export default function Sidebar({
                             selected={convo.id === state.activeConversationId}
                             onClick={() => handleSelectConvo(convo.id)}
                             sx={{
-                              borderRadius: 2,
+                              borderRadius: 1.5,
                               mb: 0.25,
-                              py: 0.75,
-                              px: 1.25,
+                              py: 0.6,
+                              px: 1,
                               '&.Mui-selected': {
-                                bgcolor: alpha(project.color || theme.palette.primary.main, 0.14),
+                                bgcolor: alpha(project.color || theme.palette.primary.main, 0.1),
                                 '&:hover': {
-                                  bgcolor: alpha(project.color || theme.palette.primary.main, 0.2),
+                                  bgcolor: alpha(project.color || theme.palette.primary.main, 0.16),
                                 },
                               },
                               '&:hover': {
@@ -756,12 +781,10 @@ export default function Sidebar({
                               },
                             }}
                           >
-                            <ListItemIcon sx={{ minWidth: 26 }}>
-                              <ChatBubbleOutlineIcon
-                                sx={{
-                                  fontSize: 15,
-                                  color: convo.id === state.activeConversationId ? (project.color || 'primary.main') : 'text.secondary',
-                                }}
+                            <ListItemIcon sx={{ minWidth: 22 }}>
+                              <MessageSquare
+                                size={13}
+                                color={convo.id === state.activeConversationId ? (project.color || theme.palette.primary.main) : theme.palette.text.secondary}
                               />
                             </ListItemIcon>
                             <ListItemText>
@@ -782,7 +805,7 @@ export default function Sidebar({
                               onClick={(e) => handleMenuOpen(e, convo.id)}
                               sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.15s' }}
                             >
-                              <MoreHorizIcon sx={{ fontSize: 16 }} />
+                              <MoreHorizontal size={14} />
                             </IconButton>
                           </ListItemButton>
                         ))
@@ -845,14 +868,14 @@ export default function Sidebar({
                       selected={convo.id === state.activeConversationId}
                       onClick={() => handleSelectConvo(convo.id)}
                       sx={{
-                        borderRadius: 2,
+                        borderRadius: 1.5,
                         mb: 0.25,
-                        py: 0.75,
-                        px: 1.5,
+                        py: 0.6,
+                        px: 1,
                         '&.Mui-selected': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.12),
+                          bgcolor: alpha(theme.palette.primary.main, 0.1),
                           '&:hover': {
-                            bgcolor: alpha(theme.palette.primary.main, 0.18),
+                            bgcolor: alpha(theme.palette.primary.main, 0.16),
                           },
                         },
                         '&:hover': {
@@ -861,8 +884,8 @@ export default function Sidebar({
                         },
                       }}
                     >
-                      <ListItemIcon sx={{ minWidth: 28 }}>
-                        <ChatBubbleOutlineIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <ListItemIcon sx={{ minWidth: 24 }}>
+                        <MessageSquare size={13} color={convo.id === state.activeConversationId ? theme.palette.primary.main : theme.palette.text.secondary} />
                       </ListItemIcon>
                       <ListItemText>
                         <Typography
@@ -882,7 +905,7 @@ export default function Sidebar({
                         onClick={(e) => handleMenuOpen(e, convo.id)}
                         sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.15s' }}
                       >
-                        <MoreHorizIcon sx={{ fontSize: 16 }} />
+                        <MoreHorizontal size={14} />
                       </IconButton>
                     </ListItemButton>
                   ))}
@@ -895,7 +918,7 @@ export default function Sidebar({
 
       {/* Footer */}
       <Divider />
-      <Box sx={{ p: 1.5, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+      <Box sx={{ p: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
           <ConnectionStatus />
           {state.settings?.memoryStorageMode === 'local_folder' && (
@@ -903,7 +926,7 @@ export default function Sidebar({
               title={`Memory Path: ${state.settings?.memoryDirectoryName || state.settings?.customMemoryPath || 'Local Folder'} · Click to configure`}
             >
               <Chip
-                icon={<FolderIcon sx={{ fontSize: '13px !important', color: 'primary.main !important' }} />}
+                icon={<Folder size={11} color={theme.palette.primary.main} />}
                 label={state.settings?.memoryDirectoryName || state.settings?.customMemoryPath || 'Folder'}
                 size="small"
                 onClick={() => onOpenSettings?.(5)}
@@ -924,15 +947,15 @@ export default function Sidebar({
             </Tooltip>
           )}
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
           {onOpenGlobalSearch && (
             <Tooltip title="Search All Chats (Cmd+Shift+F)">
               <IconButton
                 onClick={onOpenGlobalSearch}
                 size="small"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
               >
-                <SearchIcon fontSize="small" />
+                <Search size={15} />
               </IconButton>
             </Tooltip>
           )}
@@ -941,9 +964,9 @@ export default function Sidebar({
               <IconButton
                 onClick={onOpenModelManager}
                 size="small"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
               >
-                <StorageIcon fontSize="small" />
+                <HardDrive size={15} />
               </IconButton>
             </Tooltip>
           )}
@@ -952,27 +975,36 @@ export default function Sidebar({
               <IconButton
                 onClick={onOpenShortcuts}
                 size="small"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
               >
-                <KeyboardIcon fontSize="small" />
+                <Keyboard size={15} />
               </IconButton>
             </Tooltip>
           )}
+          <Tooltip title="About Me & Creator Profile">
+            <IconButton
+              onClick={() => (onOpenAboutMe ? onOpenAboutMe() : window.dispatchEvent(new CustomEvent('open-about-me')))}
+              size="small"
+              sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
+            >
+              <User size={15} />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Settings (Cmd+,)">
             <IconButton
               onClick={() => onOpenSettings?.(0)}
               size="small"
-              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+              sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
             >
-              <SettingsIcon fontSize="small" />
+              <SettingsIconLucide size={15} />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
 
       {/* Developer Watermark */}
-      <Box sx={{ px: 2, pb: 1.5, display: 'flex', justifyContent: 'center' }}>
-        <DeveloperBadge variant="watermark" />
+      <Box sx={{ px: 2, pb: 1, display: 'flex', justifyContent: 'center' }}>
+        <DeveloperBadge variant="watermark" onClick={onOpenAboutMe} />
       </Box>
 
       {/* Conversation Context Menu */}
@@ -983,11 +1015,10 @@ export default function Sidebar({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 2.5,
+              borderRadius: 2,
               minWidth: 170,
               border: '1px solid',
               borderColor: 'divider',
-              boxShadow: 8,
             },
           },
         }}
@@ -998,13 +1029,13 @@ export default function Sidebar({
           return (
             <MenuItem onClick={handleTogglePin}>
               {isPinned ? (
-                <PushPinOutlinedIcon sx={{ fontSize: 17, mr: 1.5, color: 'text.secondary' }} />
+                <PinOff size={15} style={{ marginRight: 10, color: theme.palette.text.secondary }} />
               ) : (
-                <PushPinIcon
-                  sx={{
-                    fontSize: 17,
-                    mr: 1.5,
-                    color: 'primary.main',
+                <Pin
+                  size={15}
+                  style={{
+                    marginRight: 10,
+                    color: theme.palette.primary.main,
                     transform: 'rotate(45deg)',
                   }}
                 />
@@ -1016,19 +1047,19 @@ export default function Sidebar({
           );
         })()}
         <MenuItem onClick={handleOpenMoveToProject}>
-          <DriveFileMoveIcon sx={{ fontSize: 17, mr: 1.5, color: 'text.secondary' }} />
+          <FolderInput size={15} style={{ marginRight: 10, color: theme.palette.text.secondary }} />
           <Typography variant="body2">Move to Project...</Typography>
         </MenuItem>
         <MenuItem onClick={handleRenameStart}>
-          <EditIcon sx={{ fontSize: 17, mr: 1.5, color: 'text.secondary' }} />
+          <Edit3 size={15} style={{ marginRight: 10, color: theme.palette.text.secondary }} />
           <Typography variant="body2">Rename</Typography>
         </MenuItem>
         <MenuItem onClick={handleExportMarkdown}>
-          <DownloadIcon sx={{ fontSize: 17, mr: 1.5, color: 'text.secondary' }} />
+          <Download size={15} style={{ marginRight: 10, color: theme.palette.text.secondary }} />
           <Typography variant="body2">Export Markdown</Typography>
         </MenuItem>
         <MenuItem onClick={handleDeleteConvoStart} sx={{ color: 'error.main' }}>
-          <DeleteOutlineIcon sx={{ fontSize: 17, mr: 1.5 }} />
+          <Trash2 size={15} style={{ marginRight: 10 }} />
           <Typography variant="body2">Delete Chat</Typography>
         </MenuItem>
       </Menu>
@@ -1041,11 +1072,10 @@ export default function Sidebar({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 2.5,
+              borderRadius: 2,
               minWidth: 180,
               border: '1px solid',
               borderColor: 'divider',
-              boxShadow: 8,
             },
           },
         }}
@@ -1056,15 +1086,15 @@ export default function Sidebar({
             handleProjectMenuClose();
           }}
         >
-          <AddIcon sx={{ fontSize: 17, mr: 1.5, color: 'text.secondary' }} />
+          <Plus size={15} style={{ marginRight: 10, color: theme.palette.text.secondary }} />
           <Typography variant="body2">New Chat in Project</Typography>
         </MenuItem>
         <MenuItem onClick={handleEditProjectStart}>
-          <EditIcon sx={{ fontSize: 17, mr: 1.5, color: 'text.secondary' }} />
+          <Edit3 size={15} style={{ marginRight: 10, color: theme.palette.text.secondary }} />
           <Typography variant="body2">Edit Project</Typography>
         </MenuItem>
         <MenuItem onClick={handleDeleteProjectStart} sx={{ color: 'error.main' }}>
-          <DeleteOutlineIcon sx={{ fontSize: 17, mr: 1.5 }} />
+          <Trash2 size={15} style={{ marginRight: 10 }} />
           <Typography variant="body2">Delete Project</Typography>
         </MenuItem>
       </Menu>

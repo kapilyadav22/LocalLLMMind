@@ -15,18 +15,20 @@ import {
   Divider,
   Chip,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import DownloadIcon from '@mui/icons-material/Download';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
-import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
-import TabletMacIcon from '@mui/icons-material/TabletMac';
-import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
-import CodeIcon from '@mui/icons-material/Code';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import {
+  X,
+  RotateCw,
+  Download,
+  Copy,
+  Check,
+  Monitor,
+  Tablet,
+  Smartphone,
+  Code2,
+  Eye,
+  ExternalLink,
+  Sparkles,
+} from 'lucide-react';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { showToast } from '../../utils/toast';
@@ -217,7 +219,7 @@ export default function ArtifactSandboxDrawer({
               color: 'primary.main',
             }}
           >
-            <AutoAwesomeIcon sx={{ fontSize: 18 }} />
+            <Sparkles size={16} />
           </Box>
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -245,22 +247,22 @@ export default function ArtifactSandboxDrawer({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Tooltip title="Open in new window">
             <IconButton size="small" onClick={handleOpenExternal}>
-              <OpenInNewIcon sx={{ fontSize: 18 }} />
+              <ExternalLink size={16} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Download file">
             <IconButton size="small" onClick={handleDownload}>
-              <DownloadIcon sx={{ fontSize: 18 }} />
+              <Download size={16} />
             </IconButton>
           </Tooltip>
           <Tooltip title={copied ? 'Copied!' : 'Copy code'}>
             <IconButton size="small" onClick={handleCopyCode}>
-              {copied ? <CheckIcon sx={{ fontSize: 18, color: 'success.main' }} /> : <ContentCopyIcon sx={{ fontSize: 18 }} />}
+              {copied ? <Check size={16} color="#22c55e" /> : <Copy size={16} />}
             </IconButton>
           </Tooltip>
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5, my: 0.5 }} />
           <IconButton size="small" onClick={onClose} sx={{ color: 'text.secondary' }}>
-            <CloseIcon sx={{ fontSize: 20 }} />
+            <X size={18} />
           </IconButton>
         </Box>
       </Box>
@@ -296,8 +298,8 @@ export default function ArtifactSandboxDrawer({
             },
           }}
         >
-          <Tab value="preview" label="Live Preview" icon={<VisibilityIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
-          <Tab value="code" label="Source Code" icon={<CodeIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+          <Tab value="preview" label="Live Preview" icon={<Eye size={15} />} iconPosition="start" />
+          <Tab value="code" label="Source Code" icon={<Code2 size={15} />} iconPosition="start" />
         </Tabs>
 
         {activeTab === 'preview' && (
@@ -309,7 +311,7 @@ export default function ArtifactSandboxDrawer({
                   onClick={() => setDeviceMode('desktop')}
                   sx={{ px: 1, minWidth: 32 }}
                 >
-                  <DesktopWindowsIcon sx={{ fontSize: 16 }} />
+                  <Monitor size={15} />
                 </Button>
               </Tooltip>
               <Tooltip title="Tablet View (768px)">
@@ -318,7 +320,7 @@ export default function ArtifactSandboxDrawer({
                   onClick={() => setDeviceMode('tablet')}
                   sx={{ px: 1, minWidth: 32 }}
                 >
-                  <TabletMacIcon sx={{ fontSize: 16 }} />
+                  <Tablet size={15} />
                 </Button>
               </Tooltip>
               <Tooltip title="Mobile View (375px)">
@@ -327,14 +329,14 @@ export default function ArtifactSandboxDrawer({
                   onClick={() => setDeviceMode('mobile')}
                   sx={{ px: 1, minWidth: 32 }}
                 >
-                  <PhoneIphoneIcon sx={{ fontSize: 16 }} />
+                  <Smartphone size={15} />
                 </Button>
               </Tooltip>
             </ButtonGroup>
 
             <Tooltip title="Reload Sandbox">
               <IconButton size="small" onClick={handleRefresh} sx={{ color: 'text.secondary' }}>
-                <RefreshIcon sx={{ fontSize: 17 }} />
+                <RotateCw size={15} />
               </IconButton>
             </Tooltip>
           </Box>

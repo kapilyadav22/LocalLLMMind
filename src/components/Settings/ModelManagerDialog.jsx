@@ -27,17 +27,18 @@ import {
   alpha,
   useTheme,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import DownloadIcon from '@mui/icons-material/Download';
-import DeleteIcon from '@mui/icons-material/Delete';
-import InfoIcon from '@mui/icons-material/Info';
-import SearchIcon from '@mui/icons-material/Search';
-import StorageIcon from '@mui/icons-material/Storage';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
+import {
+  X,
+  Download,
+  Trash2,
+  Info,
+  Search,
+  HardDrive,
+  RotateCw,
+  CheckCircle2,
+  ChevronUp,
+  Bot,
+} from 'lucide-react';
 import { fetchModels, pullModel, deleteModel, showModel } from '../../services/ollamaService';
 import { showToast } from '../../utils/toast';
 import { showCustomConfirm } from '../../utils/dialogService';
@@ -204,14 +205,15 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
             sx={{
               width: 38,
               height: 38,
-              borderRadius: 2.5,
+              borderRadius: 2,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}, #7c4dff)`,
+              bgcolor: 'primary.main',
+              color: '#fff',
             }}
           >
-            <StorageIcon sx={{ color: '#fff', fontSize: 22 }} />
+            <HardDrive size={20} />
           </Box>
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
@@ -224,10 +226,10 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <IconButton size="small" onClick={loadModels} disabled={loading} title="Refresh models">
-            <RefreshIcon fontSize="small" />
+            <RotateCw size={16} />
           </IconButton>
           <IconButton size="small" onClick={onClose} disabled={pulling}>
-            <CloseIcon fontSize="small" />
+            <X size={18} />
           </IconButton>
         </Box>
       </DialogTitle>
@@ -262,7 +264,7 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Search size={16} color={theme.palette.text.secondary} />
                     </InputAdornment>
                   ),
                 },
@@ -272,7 +274,7 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
 
             {filteredModels.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 6 }}>
-                <SmartToyIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                <Bot size={44} color={theme.palette.text.disabled} style={{ marginBottom: 8 }} />
                 <Typography color="text.secondary">
                   {search ? 'No models match your filter' : 'No models installed'}
                 </Typography>
@@ -343,9 +345,9 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                               sx={{ color: isExpanded ? 'primary.main' : 'text.secondary' }}
                             >
                               {isExpanded ? (
-                                <ExpandLessIcon fontSize="small" />
+                                <ChevronUp size={16} />
                               ) : (
-                                <InfoIcon fontSize="small" />
+                                <Info size={16} />
                               )}
                             </IconButton>
                             <IconButton
@@ -357,7 +359,7 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                                 '&:hover': { color: 'error.main' },
                               }}
                             >
-                              <DeleteIcon fontSize="small" />
+                              <Trash2 size={16} />
                             </IconButton>
                           </Box>
                         </ListItemSecondaryAction>
@@ -487,7 +489,7 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
-                          <DownloadIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <Download size={16} color={theme.palette.text.secondary} />
                         </InputAdornment>
                       ),
                     },
@@ -531,9 +533,9 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     {pullProgress.percent >= 100 ? (
-                      <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
+                      <CheckCircle2 size={18} color={theme.palette.success.main} />
                     ) : (
-                      <DownloadIcon sx={{ fontSize: 18, color: 'info.main' }} />
+                      <Download size={18} color={theme.palette.info.main} />
                     )}
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {pullProgress.status || 'Downloading...'}
@@ -612,7 +614,7 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                     key={suggested.name}
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {alreadyInstalled && <CheckCircleIcon sx={{ fontSize: 12, color: 'success.main' }} />}
+                        {alreadyInstalled && <CheckCircle2 size={12} color={theme.palette.success.main} />}
                         <span>{suggested.name}</span>
                       </Box>
                     }

@@ -13,8 +13,6 @@ import {
   Divider,
   Switch,
   Alert,
-  Tabs,
-  Tab,
   Chip,
   LinearProgress,
   CircularProgress,
@@ -31,29 +29,40 @@ import {
   MenuItem,
   Select,
   FormControl,
+  Card,
+  CardContent,
+  Stack,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import LinkIcon from '@mui/icons-material/Link';
-import TuneIcon from '@mui/icons-material/Tune';
-import PaletteIcon from '@mui/icons-material/Palette';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import DownloadIcon from '@mui/icons-material/Download';
-import UploadIcon from '@mui/icons-material/Upload';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import GetAppIcon from '@mui/icons-material/GetApp';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import KeyboardIcon from '@mui/icons-material/Keyboard';
-import StorageIcon from '@mui/icons-material/Storage';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import SyncIcon from '@mui/icons-material/Sync';
-import CloudQueueIcon from '@mui/icons-material/CloudQueue';
-import FolderIcon from '@mui/icons-material/Folder';
-import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
+import {
+  Link,
+  Key,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Sliders,
+  Palette,
+  CheckCircle2,
+  AlertCircle,
+  Download,
+  Upload,
+  Bot,
+  Trash2,
+  AlertTriangle,
+  Keyboard,
+  HardDrive,
+  FolderOpen,
+  RotateCw,
+  Cloud,
+  Folder,
+  FolderInput,
+  X,
+} from 'lucide-react';
 import ShortcutsManager from '../common/ShortcutsManager';
+import DeveloperBadge from '../common/DeveloperBadge';
 import { showCustomAlert, showCustomConfirm } from '../../utils/dialogService';
 import { checkConnection, fetchModels, pullModel, deleteModel } from '../../services/ollamaService';
+import { PROVIDERS, PROVIDER_CONFIGS } from '../../constants/apiProviders';
+import { testProviderConnection } from '../../services/aiProviderService';
 import { useChatStore } from '../../store/chatContext';
 import { POPULAR_MODELS, CONTEXT_WINDOW_OPTIONS, AI_PERSONAS } from '../../constants/appConstants';
 import {
@@ -68,19 +77,28 @@ import {
 import { showToast } from '../../utils/toast';
 
 const SETTINGS_SECTIONS = [
-  { id: 0, label: 'Connection', icon: LinkIcon, description: 'Ollama server endpoint & connectivity test' },
-  { id: 1, label: 'Parameters', icon: TuneIcon, description: 'Model generation parameters & default prompt' },
-  { id: 2, label: 'Models', icon: SmartToyIcon, description: 'Installed models & library downloads' },
-  { id: 3, label: 'Shortcuts', icon: KeyboardIcon, description: 'Custom keyboard shortcuts & hotkey actions' },
-  { id: 4, label: 'Appearance', icon: PaletteIcon, description: 'Color theme & visual appearance' },
-  { id: 5, label: 'Storage & Memory', icon: StorageIcon, description: 'Local chat persistence, backups, & data management' },
+  { id: 0, label: 'Connection', icon: Link, description: 'Ollama server endpoint & connectivity test' },
+  { id: 1, label: 'API Providers & Keys', icon: Key, description: 'OpenAI, Claude, Gemini, Grok, Jev (TypeSafe)' },
+  { id: 2, label: 'Parameters', icon: Sliders, description: 'Model generation parameters & default prompt' },
+  { id: 3, label: 'Models', icon: Bot, description: 'Installed models & library downloads' },
+  { id: 4, label: 'Shortcuts', icon: Keyboard, description: 'Custom keyboard shortcuts & hotkey actions' },
+  { id: 5, label: 'Appearance', icon: Palette, description: 'Color theme & visual appearance' },
+  { id: 6, label: 'Storage & Memory', icon: HardDrive, description: 'Local chat persistence, backups, & data management' },
 ];
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ py: 0.5 }}>{children}</Box> : null;
 }
 
-export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle, initialTab = 0 }) {
+export default function SettingsDialog({
+  open,
+  onClose,
+  themeMode,
+  onThemeToggle,
+  sidebarOpen,
+  onToggleSidebar,
+  initialTab = 0,
+}) {
   const { state, dispatch } = useChatStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -135,6 +153,52 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
 
   // Clear confirmation
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
+  // API Providers & Keys state
+  const [showApiKeys, setShowApiKeys] = useState({});
+  const [testingProvider, setTestingProvider] = useState({});
+  const [providerResults, setProviderResults] = useState({});
+
+  const handleApiKeyChange = (providerId, val) => {
+    setLocalSettings((prev) => ({
+      ...prev,
+      apiKeys: {
+        ...(prev.apiKeys || {}),
+        [providerId]: val,
+      },
+    }));
+    setProviderResults((prev) => ({ ...prev, [providerId]: null }));
+  };
+
+  const handleApiEndpointChange = (providerId, val) => {
+    setLocalSettings((prev) => ({
+      ...prev,
+      apiEndpoints: {
+        ...(prev.apiEndpoints || {}),
+        [providerId]: val,
+      },
+    }));
+    setProviderResults((prev) => ({ ...prev, [providerId]: null }));
+  };
+
+  const handleTestProvider = async (providerId) => {
+    const key = localSettings.apiKeys?.[providerId] || '';
+    const endpoint = localSettings.apiEndpoints?.[providerId] || '';
+    if (!key.trim()) {
+      setProviderResults((prev) => ({ ...prev, [providerId]: { ok: false, message: 'Please enter an API key first' } }));
+      return;
+    }
+    setTestingProvider((prev) => ({ ...prev, [providerId]: true }));
+    setProviderResults((prev) => ({ ...prev, [providerId]: null }));
+    try {
+      const res = await testProviderConnection(providerId, key, endpoint);
+      setProviderResults((prev) => ({ ...prev, [providerId]: res }));
+    } catch (err) {
+      setProviderResults((prev) => ({ ...prev, [providerId]: { ok: false, message: err.message || 'Test failed' } }));
+    } finally {
+      setTestingProvider((prev) => ({ ...prev, [providerId]: false }));
+    }
+  };
 
   const handleSettingChange = (key, value) => {
     setLocalSettings((prev) => ({ ...prev, [key]: value }));
@@ -443,7 +507,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                   color: 'primary.main',
                 }}
               >
-                <TuneIcon sx={{ fontSize: 18 }} />
+                <Sliders size={18} />
               </Box>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
@@ -497,7 +561,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       justifyContent: 'center',
                     }}
                   >
-                    <IconComp sx={{ fontSize: 19 }} />
+                    <IconComp size={18} />
                   </ListItemIcon>
                   <ListItemText
                     primary={sec.label}
@@ -511,6 +575,10 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
               );
             })}
           </List>
+
+          <Box sx={{ mt: 'auto', pt: 1.5, display: { xs: 'none', sm: 'flex' }, justifyContent: 'center' }}>
+            <DeveloperBadge variant="watermark" />
+          </Box>
         </Box>
 
         {/* Right Content Column */}
@@ -536,7 +604,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
               </Typography>
             </Box>
             <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
-              <CloseIcon fontSize="small" />
+              <X size={18} />
             </IconButton>
           </Box>
 
@@ -567,7 +635,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
           {testResult && (
             <Alert
               severity={testResult}
-              icon={testResult === 'success' ? <CheckCircleIcon /> : <ErrorIcon />}
+              icon={testResult === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               sx={{ mt: 2, borderRadius: 2 }}
             >
               {testResult === 'success'
@@ -595,8 +663,201 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
           />
         </TabPanel>
 
-        {/* Parameters Tab */}
+        {/* API Providers & Keys Tab */}
         <TabPanel value={tab} index={1}>
+          <Box sx={{ mb: 2.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+              Online AI Providers &amp; Cloud Models
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Configure API keys for OpenAI, Anthropic Claude, Google Gemini, xAI Grok, Jev (TypeSafe / Typeface), or custom endpoints.
+              Keys are stored locally in your browser.
+            </Typography>
+          </Box>
+
+          <Stack spacing={2}>
+            {PROVIDER_CONFIGS.map((provider) => {
+              const keyVal = localSettings.apiKeys?.[provider.id] || '';
+              const endpointVal = localSettings.apiEndpoints?.[provider.id] || '';
+              const isVisible = Boolean(showApiKeys[provider.id]);
+              const isTesting = Boolean(testingProvider[provider.id]);
+              const result = providerResults[provider.id];
+              const hasKey = Boolean(keyVal.trim());
+
+              return (
+                <Card
+                  key={provider.id}
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 2,
+                    borderColor: hasKey ? alpha(provider.badgeColor || theme.palette.primary.main, 0.4) : 'divider',
+                    bgcolor: alpha(theme.palette.background.paper, 0.6),
+                    transition: 'border-color 0.2s',
+                  }}
+                >
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                    {/* Header: Provider Name + Status */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                        <Box
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(provider.badgeColor || theme.palette.primary.main, 0.12),
+                            color: provider.badgeColor || theme.palette.primary.main,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Key size={16} />
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                            {provider.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {provider.description}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Chip
+                        size="small"
+                        label={hasKey ? 'Configured' : 'Not Set'}
+                        color={hasKey ? 'success' : 'default'}
+                        variant={hasKey ? 'filled' : 'outlined'}
+                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                      />
+                    </Box>
+
+                    {/* API Key Input */}
+                    <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        type={isVisible ? 'text' : 'password'}
+                        label={`${provider.name} API Key`}
+                        value={keyVal}
+                        onChange={(e) => handleApiKeyChange(provider.id, e.target.value)}
+                        placeholder={provider.keyPlaceholder}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                size="small"
+                                onClick={() => setShowApiKeys((prev) => ({ ...prev, [provider.id]: !prev[provider.id] }))}
+                                edge="end"
+                                tabIndex={-1}
+                                sx={{ color: 'text.secondary' }}
+                              >
+                                {isVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={isTesting || !hasKey}
+                        onClick={() => handleTestProvider(provider.id)}
+                        sx={{ whiteSpace: 'nowrap', minWidth: 90 }}
+                      >
+                        {isTesting ? <CircularProgress size={14} sx={{ mr: 0.5 }} /> : null}
+                        Test
+                      </Button>
+                    </Box>
+
+                    {/* Test result message if any */}
+                    {result && (
+                      <Alert
+                        severity={result.ok ? 'success' : 'error'}
+                        icon={result.ok ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                        sx={{ py: 0.25, px: 1.5, my: 1, fontSize: '0.78rem', alignItems: 'center' }}
+                      >
+                        {result.message}
+                      </Alert>
+                    )}
+
+                    {/* Supported Models Preview & Documentation Link */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mt: 1.25 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontSize: '0.72rem' }}>
+                          Models:
+                        </Typography>
+                        {provider.models.slice(0, 4).map((m) => (
+                          <Chip
+                            key={m.id}
+                            label={m.name}
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.66rem', bgcolor: 'action.hover' }}
+                          />
+                        ))}
+                        {provider.models.length > 4 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
+                            +{provider.models.length - 4} more
+                          </Typography>
+                        )}
+                      </Box>
+
+                      {provider.keyDocumentationUrl && (
+                        <Button
+                          component="a"
+                          href={provider.keyDocumentationUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          size="small"
+                          startIcon={<ExternalLink size={12} />}
+                          sx={{
+                            fontSize: '0.72rem',
+                            textTransform: 'none',
+                            color: 'text.secondary',
+                            p: 0,
+                            '&:hover': { color: 'primary.main', bgcolor: 'transparent' },
+                          }}
+                        >
+                          Get API Key
+                        </Button>
+                      )}
+                    </Box>
+
+                    {/* Custom Endpoint override for Custom/OpenAI/Jev/Enterprise */}
+                    {(provider.id === PROVIDERS.CUSTOM || provider.id === PROVIDERS.JEV || endpointVal) && (
+                      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px dashed', borderColor: 'divider' }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label={provider.id === PROVIDERS.CUSTOM ? 'Base URL (OpenAI-compatible)' : 'Endpoint URL Override (optional)'}
+                          value={endpointVal}
+                          onChange={(e) => handleApiEndpointChange(provider.id, e.target.value)}
+                          placeholder={provider.defaultEndpoint}
+                          helperText={provider.id === PROVIDERS.CUSTOM ? 'e.g. https://openrouter.ai/api/v1 or https://api.groq.com/openai/v1' : `Default: ${provider.defaultEndpoint}`}
+                          FormHelperTextProps={{ sx: { fontSize: '0.68rem' } }}
+                        />
+                        {provider.id === PROVIDERS.CUSTOM && (
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Custom Model Name"
+                            value={localSettings.customModelName || ''}
+                            onChange={(e) => handleSettingChange('customModelName', e.target.value)}
+                            placeholder="deepseek/deepseek-r1 or meta-llama/llama-3.3-70b-instruct"
+                            sx={{ mt: 1 }}
+                          />
+                        )}
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Stack>
+        </TabPanel>
+
+        {/* Parameters Tab */}
+        <TabPanel value={tab} index={2}>
           <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
             Temperature
           </Typography>
@@ -721,7 +982,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
         </TabPanel>
 
         {/* Models Tab */}
-        <TabPanel value={tab} index={2}>
+        <TabPanel value={tab} index={3}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
             Pull a New Model
           </Typography>
@@ -753,7 +1014,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                 variant="contained"
                 onClick={() => handleStartPull()}
                 disabled={!modelToPull.trim()}
-                startIcon={<GetAppIcon />}
+                startIcon={<Download size={16} />}
                 disableElevation
                 sx={{ whiteSpace: 'nowrap' }}
               >
@@ -843,7 +1104,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       onClick={() => handleDeleteModel(m.name)}
                       title={`Delete ${m.name}`}
                     >
-                      <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                      <Trash2 size={16} />
                     </IconButton>
                   }
                   sx={{ py: 1 }}
@@ -871,42 +1132,73 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
         </TabPanel>
 
         {/* Shortcuts Tab */}
-        <TabPanel value={tab} index={3}>
+        <TabPanel value={tab} index={4}>
           <ShortcutsManager />
         </TabPanel>
 
         {/* Appearance Tab */}
-        <TabPanel value={tab} index={4}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              p: 2,
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: alpha(theme.palette.background.paper, 0.5),
-            }}
-          >
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Dark Mode
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {themeMode === 'dark' ? 'Currently using dark theme' : 'Currently using light theme'}
-              </Typography>
+        <TabPanel value={tab} index={5}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 2,
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: alpha(theme.palette.background.paper, 0.5),
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Dark Mode
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {themeMode === 'dark' ? 'Currently using dark theme' : 'Currently using light theme'}
+                </Typography>
+              </Box>
+              <Switch
+                checked={themeMode === 'dark'}
+                onChange={onThemeToggle}
+                color="primary"
+              />
             </Box>
-            <Switch
-              checked={themeMode === 'dark'}
-              onChange={onThemeToggle}
-              color="primary"
-            />
+
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 2,
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: alpha(theme.palette.background.paper, 0.5),
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Show Left Sidebar
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {sidebarOpen
+                    ? 'Sidebar is currently visible (Shortcut: ⌘B / Ctrl+B)'
+                    : 'Sidebar is currently hidden (Shortcut: ⌘B / Ctrl+B)'}
+                </Typography>
+              </Box>
+              <Switch
+                checked={Boolean(sidebarOpen)}
+                onChange={onToggleSidebar}
+                color="primary"
+              />
+            </Box>
           </Box>
         </TabPanel>
 
         {/* Storage & Memory Tab */}
-        <TabPanel value={tab} index={5}>
+        <TabPanel value={tab} index={6}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* 1. Storage Location Mode */}
             <Box>
@@ -934,7 +1226,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CloudQueueIcon sx={{ fontSize: 20, color: localSettings.memoryStorageMode === 'browser' ? 'primary.main' : 'text.secondary' }} />
+                      <Cloud size={18} color={localSettings.memoryStorageMode === 'browser' ? theme.palette.primary.main : theme.palette.text.secondary} />
                       <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
                         Browser Memory
                       </Typography>
@@ -962,7 +1254,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <FolderOpenIcon sx={{ fontSize: 20, color: localSettings.memoryStorageMode === 'local_folder' ? 'primary.main' : 'text.secondary' }} />
+                      <FolderOpen size={18} color={localSettings.memoryStorageMode === 'local_folder' ? theme.palette.primary.main : theme.palette.text.secondary} />
                       <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
                         Local Directory
                       </Typography>
@@ -1022,7 +1314,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-                        <FolderIcon sx={{ color: 'primary.main', fontSize: 28 }} />
+                        <Folder size={24} color={theme.palette.primary.main} />
                         <Box sx={{ minWidth: 0 }}>
                           <Typography variant="subtitle2" noWrap sx={{ fontWeight: 700 }}>
                             {dirHandle.name}
@@ -1034,7 +1326,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       </Box>
                       <Tooltip title="Disconnect folder">
                         <IconButton size="small" onClick={handleDisconnectDirectory} sx={{ color: 'text.secondary' }}>
-                          <CloseIcon fontSize="small" />
+                          <X size={16} />
                         </IconButton>
                       </Tooltip>
                     </Box>
@@ -1044,7 +1336,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       <Button
                         size="small"
                         variant="contained"
-                        startIcon={syncingDir ? <CircularProgress size={14} color="inherit" /> : <SyncIcon fontSize="small" />}
+                        startIcon={syncingDir ? <CircularProgress size={14} color="inherit" /> : <RotateCw size={14} />}
                         onClick={handleManualSync}
                         disabled={syncingDir}
                         disableElevation
@@ -1054,7 +1346,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={loadingDir ? <CircularProgress size={14} color="inherit" /> : <FolderOpenIcon fontSize="small" />}
+                        startIcon={loadingDir ? <CircularProgress size={14} color="inherit" /> : <FolderOpen size={14} />}
                         onClick={handleRestoreFromDirectory}
                         disabled={loadingDir}
                       >
@@ -1063,7 +1355,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={<DriveFileMoveIcon fontSize="small" />}
+                        startIcon={<FolderInput size={14} />}
                         onClick={handleSelectDirectory}
                       >
                         Change Folder
@@ -1084,7 +1376,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       gap: 1.5,
                     }}
                   >
-                    <FolderOpenIcon sx={{ fontSize: 36, color: 'text.secondary', opacity: 0.6 }} />
+                    <FolderOpen size={32} color={theme.palette.text.secondary} style={{ opacity: 0.6 }} />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         No local directory selected yet
@@ -1096,7 +1388,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                     {fsSupported ? (
                       <Button
                         variant="contained"
-                        startIcon={<FolderOpenIcon />}
+                        startIcon={<FolderOpen size={16} />}
                         onClick={handleSelectDirectory}
                         disableElevation
                       >
@@ -1126,7 +1418,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                       input: {
                         startAdornment: (
                           <InputAdornment position="start">
-                            <FolderIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                            <Folder size={16} color={theme.palette.text.secondary} />
                           </InputAdornment>
                         ),
                       },
@@ -1181,10 +1473,10 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
                 Download a portable JSON snapshot or restore previous chat files.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportChats} fullWidth>
+                <Button variant="outlined" startIcon={<Download size={16} />} onClick={handleExportChats} fullWidth>
                   Export Backup
                 </Button>
-                <Button variant="outlined" component="label" startIcon={<UploadIcon />} fullWidth>
+                <Button variant="outlined" component="label" startIcon={<Upload size={16} />} fullWidth>
                   Import Backup
                   <input type="file" accept=".json" hidden onChange={handleImportChats} />
                 </Button>
@@ -1204,7 +1496,7 @@ export default function SettingsDialog({ open, onClose, themeMode, onThemeToggle
               <Button
                 variant="outlined"
                 color="error"
-                startIcon={<WarningAmberIcon />}
+                startIcon={<AlertTriangle size={16} />}
                 onClick={() => setClearConfirmOpen(true)}
               >
                 Clear All Conversations

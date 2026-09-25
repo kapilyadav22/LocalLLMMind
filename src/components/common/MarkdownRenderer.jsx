@@ -25,13 +25,15 @@ import docker from 'react-syntax-highlighter/dist/esm/languages/prism/docker';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 import { Box, IconButton, Tooltip, Typography, Collapse, Button, Chip, alpha } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import {
+  Copy,
+  Check,
+  Brain,
+  ChevronDown,
+  Sparkles,
+  Eye,
+  ExternalLink,
+} from 'lucide-react';
 
 // Register languages
 SyntaxHighlighter.registerLanguage('javascript', js);
@@ -119,7 +121,7 @@ function CodeBlock({ language, children }) {
             <Chip
               label="Artifact"
               size="small"
-              icon={<AutoAwesomeIcon sx={{ fontSize: '12px !important' }} />}
+              icon={<Sparkles size={11} style={{ marginLeft: 6 }} />}
               sx={{
                 height: 18,
                 fontSize: '0.62rem',
@@ -138,7 +140,7 @@ function CodeBlock({ language, children }) {
                 size="small"
                 variant="text"
                 onClick={() => setInlinePreview((prev) => !prev)}
-                startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
+                startIcon={<Eye size={13} />}
                 sx={{
                   py: 0.2,
                   px: 1,
@@ -154,7 +156,7 @@ function CodeBlock({ language, children }) {
                 size="small"
                 variant="contained"
                 onClick={handleOpenSandbox}
-                startIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                startIcon={<ExternalLink size={13} />}
                 sx={{
                   py: 0.2,
                   px: 1.2,
@@ -172,7 +174,7 @@ function CodeBlock({ language, children }) {
 
           <Tooltip title={copied ? 'Copied!' : 'Copy code'}>
             <IconButton size="small" onClick={handleCopy} sx={{ color: 'text.secondary', p: 0.5 }}>
-              {copied ? <CheckIcon fontSize="small" sx={{ color: 'success.main' }} /> : <ContentCopyIcon fontSize="small" />}
+              {copied ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
             </IconButton>
           </Tooltip>
         </Box>
@@ -466,7 +468,7 @@ export default function MarkdownRenderer({ content }) {
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <PsychologyIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
+              <Brain size={16} color="var(--mui-palette-secondary-main, #a855f7)" />
               <Typography variant="caption" sx={{ fontWeight: 600, color: 'secondary.main', fontSize: '0.78rem' }}>
                 {isThinking ? 'Thinking process…' : 'Thought process'}
               </Typography>
@@ -487,12 +489,12 @@ export default function MarkdownRenderer({ content }) {
                 />
               )}
             </Box>
-            <KeyboardArrowDownIcon
-              sx={{
-                fontSize: 18,
-                color: 'text.secondary',
+            <ChevronDown
+              size={16}
+              style={{
                 transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s ease',
+                color: 'var(--mui-palette-text-secondary, #71717a)',
               }}
             />
           </Box>

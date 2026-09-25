@@ -3,14 +3,71 @@
  * Single source of truth for branding, developer information, and global configuration.
  */
 
-export const DEVELOPER_NAME = 'Kapil Kumar Yadav';
-export const DEVELOPER_TITLE = 'Full Stack & AI Engineer';
-export const DEVELOPER_WATERMARK = 'Engineered by Kapil Kumar Yadav';
+export const DEVELOPER_NAME = 'Kapil Yadav';
+export const DEVELOPER_HANDLE = '@kapilyadav22';
+export const DEVELOPER_TITLE = 'Software Engineer | Delhi | DTU';
+export const DEVELOPER_BIO = 'Software Engineer | Delhi | DTU';
+export const DEVELOPER_WATERMARK = 'Crafted by Kapil Yadav';
+export const DEVELOPER_AVATAR = 'https://ugc.production.linktr.ee/cfb54208-2c22-4dab-b740-fea928171d17_IMG-20230319-204347-411.jpeg?io=true&size=avatar-v3_0';
 
 export const APP_NAME = 'LocalLLMMind';
 export const APP_SHORT_NAME = 'LocalLLMMind';
-export const APP_SUBTITLE = 'Production-Grade Local AI Workstation';
+export const APP_SUBTITLE = 'Production-Grade Local & Cloud AI Workstation';
 export const APP_VERSION = '1.3.0';
+
+export const DOCKERHUB_IMAGE_URL = 'https://hub.docker.com/r/kapilyadav22/localllmmind';
+export const DOCKERHUB_PULL_CMD = 'docker pull kapilyadav22/localllmmind';
+
+export const SOCIAL_PROFILES = [
+  {
+    id: 'github',
+    name: 'GitHub',
+    url: 'https://github.com/kapilyadav22',
+    handle: '@kapilyadav22',
+    color: '#24292e',
+    badge: 'Code & Repos',
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    url: 'https://www.linkedin.com/in/kapilyadav22',
+    handle: 'in/kapilyadav22',
+    color: '#0a66c2',
+    badge: 'Professional Network',
+  },
+  {
+    id: 'x',
+    name: 'X (Twitter)',
+    url: 'https://x.com/kapilyadav2210',
+    handle: '@kapilyadav2210',
+    color: '#1da1f2',
+    badge: 'Updates & Thoughts',
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    url: 'https://youtube.com/@kapilyadav0180',
+    handle: '@kapilyadav0180',
+    color: '#ff0000',
+    badge: 'Engineering & Tech',
+  },
+  {
+    id: 'telegram',
+    name: 'Telegram',
+    url: 'https://t.me/programminghub22',
+    handle: '@programminghub22',
+    color: '#229ed9',
+    badge: 'Community & Devs',
+  },
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    url: 'https://instagram.com/kapilyadav__',
+    handle: '@kapilyadav__',
+    color: '#e4405f',
+    badge: 'Personal',
+  },
+];
 
 export const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 
@@ -85,18 +142,26 @@ export const DEFAULT_SETTINGS = {
   memoryDirectoryName: '', // Name of the selected folder from File System Access API
   autoSyncFolder: true, // Automatically sync conversations to selected folder
   saveMarkdownCopies: true, // Also write readable .md files in chats/ subfolder
+  apiKeys: {
+    openai: '',
+    anthropic: '',
+    gemini: '',
+    grok: '',
+    jev: '',
+    custom: '',
+  },
+  apiEndpoints: {
+    openai: '',
+    anthropic: '',
+    gemini: '',
+    grok: '',
+    jev: '',
+    custom: '',
+  },
+  customModelName: '',
 };
 
-export const POPULAR_MODELS = [
-  { name: 'llama3.2', desc: 'Meta Llama 3.2 (3B) - Fast & capable general model' },
-  { name: 'llama3.2-vision:11b', desc: 'Meta Llama 3.2 Vision (11B) - Multimodal visual reasoning & OCR' },
-  { name: 'deepseek-r1:8b', desc: 'DeepSeek-R1 (8B) - State-of-the-art reasoning model' },
-  { name: 'qwen2.5-coder:7b', desc: 'Qwen 2.5 Coder (7B) - Top-tier programming assistant' },
-  { name: 'llava:7b', desc: 'LLaVA (7B) - Lightweight multimodal visual assistant' },
-  { name: 'mistral', desc: 'Mistral (7B) - Reliable instruction following' },
-  { name: 'moondream', desc: 'Moondream 2 (1.8B) - Ultra-fast compact visual chat' },
-  { name: 'gemma2', desc: 'Google Gemma 2 (9B) - High reasoning benchmark scores' },
-];
+export { POPULAR_MODELS, CURRENT_MODELS } from './models.js';
 
 export const PROMPT_TEMPLATES = [
   { command: '/summarize', label: 'Summarize text', text: 'Summarize the following text briefly and capture the key takeaways:\n\n' },

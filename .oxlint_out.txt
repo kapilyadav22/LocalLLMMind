@@ -1,0 +1,528 @@
+
+  ! react-hooks(exhaustive-deps): React hook useMemo depends on `localModels`, which changes every render
+    ,-[src/components/common/ModelSelector.jsx:32:9]
+ 31 |   // Group models by local vs online providers
+ 32 |   const localModels = state.models || [];
+    :         ^^^^^|^^^^^
+    :              `-- `localModels` is declared here
+ 33 |   const apiKeys = state.settings.apiKeys || {};
+    `----
+    ,-[src/components/common/ModelSelector.jsx:74:14]
+ 73 |     return value;
+ 74 |   }, [value, localModels]);
+    :              ^^^^^|^^^^^
+    :                   `-- it will always cause this hook to re-evaluate
+ 75 | 
+    `----
+  help: Try memoizing this variable with `useRef` or `useCallback`.
+
+  ! eslint(no-unused-vars): Variable 'ep' is declared but never used. Unused variables should start with a '_'.
+     ,-[src/services/aiProviderService.js:582:15]
+ 581 |       case PROVIDERS.JEV: {
+ 582 |         const ep = (endpoint || 'https://api.typesafe.ai/v1').replace(/\/+$/, '');
+     :               ^|
+     :                `-- 'ep' is declared here
+ 583 |         return { ok: true, message: 'Jev (TypeSafe) endpoint configured and ready.' };
+     `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Identifier 'Stack' is imported but never used.
+   ,-[src/components/Code/FloatingAiActionBar.jsx:1:35]
+ 1 | import { Box, Button, IconButton, Stack, Tooltip, alpha, useTheme } from '@mui/material';
+   :                                   ^^|^^
+   :                                     `-- 'Stack' is imported here
+ 2 | import { Sparkles, Zap, TestTube2, Bug, MessageSquare, X } from 'lucide-react';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/Code/FloatingAiActionBar.jsx:2:41]
+ 1 | import { Box, Button, IconButton, Stack, Tooltip, alpha, useTheme } from '@mui/material';
+ 2 | import { Sparkles, Zap, TestTube2, Bug, MessageSquare, X } from 'lucide-react';
+   :                                         ^^^^^^|^^^^^^
+   :                                               `-- 'MessageSquare' is imported here
+ 3 | 
+   `----
+  help: Consider removing this import.
+
+  x eslint(no-undef): 'CircularProgress' is not defined.
+     ,-[src/components/Code/CodeExportModal.jsx:473:32]
+ 472 |             variant="contained"
+ 473 |             startIcon={busy ? <CircularProgress size={14} color="inherit" /> : <Download size={14} />}
+     :                                ^^^^^^^^^^^^^^^^
+ 474 |             onClick={handleDownloadPng}
+     `----
+  help: Either define 'CircularProgress' or remove the reference to it. If 'CircularProgress' is a global variable, add it to the 'globals' configuration.
+
+  ! eslint(no-unused-vars): Identifier 'Sparkles' is imported but never used.
+    ,-[src/components/Code/CodeExportModal.jsx:31:3]
+ 30 |   Camera,
+ 31 |   Sparkles,
+    :   ^^^^|^^^
+    :       `-- 'Sparkles' is imported here
+ 32 |   Layers,
+    `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Layers' is imported but never used.
+    ,-[src/components/Code/CodeExportModal.jsx:32:3]
+ 31 |   Sparkles,
+ 32 |   Layers,
+    :   ^^^|^^
+    :      `-- 'Layers' is imported here
+ 33 |   Sliders,
+    `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Sliders' is imported but never used.
+    ,-[src/components/Code/CodeExportModal.jsx:33:3]
+ 32 |   Layers,
+ 33 |   Sliders,
+    :   ^^^|^^^
+    :      `-- 'Sliders' is imported here
+ 34 |   Type,
+    `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Type' is imported but never used.
+    ,-[src/components/Code/CodeExportModal.jsx:34:3]
+ 33 |   Sliders,
+ 34 |   Type,
+    :   ^^|^
+    :     `-- 'Type' is imported here
+ 35 | } from 'lucide-react';
+    `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Variable 'setBorderRadius' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/components/Code/CodeExportModal.jsx:79:24]
+ 78 |   const [showWatermark, setShowWatermark] = useState(true);
+ 79 |   const [borderRadius, setBorderRadius] = useState(12);
+    :                        ^^^^^^^|^^^^^^^
+    :                               `-- 'setBorderRadius' is declared here
+ 80 |   const [fontSize, setFontSize] = useState(13);
+    `----
+  help: Consider removing this declaration.
+
+  ! react(jsx-no-undef): 'CircularProgress' is not defined.
+     ,-[src/components/Code/CodeExportModal.jsx:473:32]
+ 472 |             variant="contained"
+ 473 |             startIcon={busy ? <CircularProgress size={14} color="inherit" /> : <Download size={14} />}
+     :                                ^^^^^^^^^^^^^^^^
+ 474 |             onClick={handleDownloadPng}
+     `----
+
+  ! eslint(no-unused-vars): Identifier 'InputLabel' is imported but never used.
+    ,-[src/components/Code/EditorCustomizerPopover.jsx:11:3]
+ 10 |   FormControl,
+ 11 |   InputLabel,
+    :   ^^^^^|^^^^
+    :        `-- 'InputLabel' is imported here
+ 12 |   Slider,
+    `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Tooltip' is imported but never used.
+    ,-[src/components/Code/EditorCustomizerPopover.jsx:13:3]
+ 12 |   Slider,
+ 13 |   Tooltip,
+    :   ^^^|^^^
+    :      `-- 'Tooltip' is imported here
+ 14 |   Button,
+    `----
+  help: Consider removing this import.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'handleToggleSidebar'
+     ,-[src/components/Layout/AppLayout.jsx:225:6]
+ 173 |             case 'toggle_sidebar':
+ 174 |               handleToggleSidebar();
+     :               ^^^^^^^^^|^^^^^^^^^
+     :                        `-- useEffect uses `handleToggleSidebar` here
+ 175 |               break;
+ 176 |             case 'open_settings':
+ 177 |               setSettingsOpen((prev) => !prev);
+ 178 |               break;
+ 179 |             case 'global_search':
+ 180 |               setGlobalSearchOpen((prev) => !prev);
+ 181 |               break;
+ 182 |             case 'open_model_manager':
+ 183 |               setModelManagerOpen((prev) => !prev);
+ 184 |               break;
+ 185 |             case 'show_shortcuts':
+ 186 |               setShortcutsOpen((prev) => !prev);
+ 187 |               break;
+ 188 |             case 'toggle_theme':
+ 189 |               onThemeToggle?.();
+ 190 |               break;
+ 191 |             case 'focus_input': {
+ 192 |               const inputEl = document.getElementById('chat-message-input');
+ 193 |               inputEl?.focus();
+ 194 |               break;
+ 195 |             }
+ 196 |             case 'stop_generation':
+ 197 |               if (state.isStreaming) {
+ 198 |                 window.dispatchEvent(new CustomEvent('llm-stop-stream'));
+ 199 |               } else if (settingsOpen) {
+ 200 |                 setSettingsOpen(false);
+ 201 |               } else if (shortcutsOpen) {
+ 202 |                 setShortcutsOpen(false);
+ 203 |               } else if (globalSearchOpen) {
+ 204 |                 setGlobalSearchOpen(false);
+ 205 |               } else if (modelManagerOpen) {
+ 206 |                 setModelManagerOpen(false);
+ 207 |               }
+ 208 |               break;
+ 209 |             case 'insert_template': {
+ 210 |               const textToInsert = s.payload || '';
+ 211 |               window.dispatchEvent(
+ 212 |                 new CustomEvent('llm-insert-text', { detail: { text: textToInsert } })
+ 213 |               );
+ 214 |               break;
+ 215 |             }
+ 216 |             default:
+ 217 |               break;
+ 218 |           }
+ 219 |           return;
+ 220 |         }
+ 221 |       }
+ 222 |     };
+ 223 |     window.addEventListener('keydown', handleKeyDown);
+ 224 |     return () => window.removeEventListener('keydown', handleKeyDown);
+ 225 |   }, [state.shortcuts, state.isStreaming, settingsOpen, shortcutsOpen, globalSearchOpen, modelManagerOpen, dispatch, onThemeToggle]);
+     :      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 226 | 
+     `----
+  help: Either include it or remove the dependency array.
+
+  ! eslint(no-unused-vars): Variable 'isSearchingWeb' is declared but never used. Unused variables should start with a '_'.
+     ,-[src/components/Chat/ChatView.jsx:181:10]
+ 180 |   // Live Web Search Grounding state
+ 181 |   const [isSearchingWeb, setIsSearchingWeb] = useState(false);
+     :          ^^^^^^^|^^^^^^
+     :                 `-- 'isSearchingWeb' is declared here
+ 182 |   const [searchWebQuery, setSearchWebQuery] = useState('');
+     `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'searchWebQuery' is declared but never used. Unused variables should start with a '_'.
+     ,-[src/components/Chat/ChatView.jsx:182:10]
+ 181 |   const [isSearchingWeb, setIsSearchingWeb] = useState(false);
+ 182 |   const [searchWebQuery, setSearchWebQuery] = useState('');
+     :          ^^^^^^^|^^^^^^
+     :                 `-- 'searchWebQuery' is declared here
+ 183 | 
+     `----
+  help: Consider removing this declaration.
+
+  ! react-hooks(exhaustive-deps): React Hook useCallback has missing dependencies: 'state.models', and 'state.conversations'
+     ,-[src/components/Chat/ChatView.jsx:452:5]
+ 363 |         settings: state.settings,
+ 364 |         localModels: state.models,
+     :                      ^^^^^
+ 365 |         onToken: (token) => {
+ 366 |           tokenBufferRef.current += token;
+ 367 |         },
+ 368 |         onDone: (parsed = {}) => {
+ 369 |           if (flushTimerRef.current) {
+ 370 |             clearInterval(flushTimerRef.current);
+ 371 |             flushTimerRef.current = null;
+ 372 |           }
+ 373 |           const remaining = tokenBufferRef.current;
+ 374 |           tokenBufferRef.current = '';
+ 375 | 
+ 376 |           if (remaining) {
+ 377 |             dispatch({
+ 378 |               type: 'APPEND_TO_LAST_MESSAGE',
+ 379 |               payload: { conversationId: currentConvoId, content: remaining },
+ 380 |             });
+ 381 |           }
+ 382 | 
+ 383 |           let metrics = null;
+ 384 |           if (parsed.eval_count && parsed.eval_duration) {
+ 385 |             metrics = {
+ 386 |               evalCount: parsed.eval_count,
+ 387 |               evalDuration: parsed.eval_duration,
+ 388 |               duration: (parsed.eval_duration / 1e9).toFixed(1),
+ 389 |               tokPerSec: (parsed.eval_count / (parsed.eval_duration / 1e9)).toFixed(1),
+ 390 |               model: parsed.model || targetModel,
+ 391 |             };
+ 392 |           }
+ 393 | 
+ 394 |           dispatch({
+ 395 |             type: 'FINISH_LAST_MESSAGE',
+ 396 |             payload: { conversationId: currentConvoId, metrics },
+ 397 |           });
+ 398 |           dispatch({ type: 'SET_STREAMING', payload: false });
+ 399 |           abortControllerRef.current = null;
+ 400 | 
+ 401 |           // Autonomous AI smart auto-titling for new chats
+ 402 |           const targetConvo = state.conversations.find((c) => c.id === currentConvoId);
+     :                               ^^^^^^^^^^^^^^^^^^^
+ 403 |           if (
+ 404 |             targetConvo &&
+ 405 |             (!targetConvo.title || targetConvo.title === 'New Chat' || targetConvo.title.length > 40) &&
+ 406 |             targetConvo.messages.length <= 2
+ 407 |           ) {
+ 408 |             const firstUserText = targetConvo.messages.find((m) => m.role === 'user')?.content;
+ 409 |             if (firstUserText) {
+ 410 |               generateConversationTitle({
+ 411 |                 model: targetModel,
+ 412 |                 userMessage: firstUserText,
+ 413 |                 ollamaUrl: state.settings.ollamaUrl,
+ 414 |               })
+ 415 |                 .then((smartTitle) => {
+ 416 |                   if (smartTitle) {
+ 417 |                     dispatch({
+ 418 |                       type: 'RENAME_CONVERSATION',
+ 419 |                       payload: { id: currentConvoId, title: smartTitle },
+ 420 |                     });
+ 421 |                   }
+ 422 |                 })
+ 423 |                 .catch(() => {});
+ 424 |             }
+ 425 |           }
+ 426 |         },
+ 427 |         onError: (error) => {
+ 428 |           if (flushTimerRef.current) {
+ 429 |             clearInterval(flushTimerRef.current);
+ 430 |             flushTimerRef.current = null;
+ 431 |           }
+ 432 |           tokenBufferRef.current = '';
+ 433 |           if (error instanceof MissingApiKeyError || error.name === 'MissingApiKeyError') {
+ 434 |             setMissingKeyDialog({
+ 435 |               providerId: error.provider,
+ 436 |               modelName: error.model,
+ 437 |             });
+ 438 |           }
+ 439 |           dispatch({
+ 440 |             type: 'APPEND_TO_LAST_MESSAGE',
+ 441 |             payload: {
+ 442 |               conversationId: currentConvoId,
+ 443 |               content: `\n\n⚠️ Error: ${error.message}`,
+ 444 |             },
+ 445 |           });
+ 446 |           dispatch({ type: 'SET_STREAMING', payload: false });
+ 447 |           abortControllerRef.current = null;
+ 448 |         },
+ 449 |         signal: abortControllerRef.current.signal,
+ 450 |       });
+ 451 |     },
+ 452 |     [dispatch, state.settings]
+     :     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 453 |   );
+     `----
+  help: Either include it or remove the dependency array.
+
+  ! react-hooks(exhaustive-deps): React Hook useCallback has a missing dependency: 'state.models'
+     ,-[src/components/Chat/ChatView.jsx:619:5]
+ 509 |         settings: state.settings,
+ 510 |         localModels: state.models,
+     :                      ^^|^^
+     :                        `-- useCallback uses `state.models` here
+ 511 |         onToken: (token) => {
+ 512 |           bufferA += token;
+ 513 |         },
+ 514 |         onDone: (parsed = {}) => {
+ 515 |           clearInterval(flushTimerA);
+ 516 |           if (bufferA) contentA += bufferA;
+ 517 |           bufferA = '';
+ 518 | 
+ 519 |           let metrics = null;
+ 520 |           if (parsed.eval_count && parsed.eval_duration) {
+ 521 |             metrics = {
+ 522 |               evalCount: parsed.eval_count,
+ 523 |               evalDuration: parsed.eval_duration,
+ 524 |               duration: (parsed.eval_duration / 1e9).toFixed(1),
+ 525 |               tokPerSec: (parsed.eval_count / (parsed.eval_duration / 1e9)).toFixed(1),
+ 526 |               model: parsed.model || modelA,
+ 527 |             };
+ 528 |           }
+ 529 | 
+ 530 |           dispatch({
+ 531 |             type: 'UPDATE_ARENA_MESSAGE',
+ 532 |             payload: {
+ 533 |               conversationId: currentConvoId,
+ 534 |               modelKey: 'modelA',
+ 535 |               patch: { content: contentA, isStreaming: false, metrics },
+ 536 |             },
+ 537 |           });
+ 538 |         },
+ 539 |         onError: (error) => {
+ 540 |           clearInterval(flushTimerA);
+ 541 |           bufferA = '';
+ 542 |           contentA += `\n\n⚠️ Error (${modelA}): ${error.message}`;
+ 543 |           dispatch({
+ 544 |             type: 'UPDATE_ARENA_MESSAGE',
+ 545 |             payload: {
+ 546 |               conversationId: currentConvoId,
+ 547 |               modelKey: 'modelA',
+ 548 |               patch: { content: contentA, isStreaming: false },
+ 549 |             },
+ 550 |           });
+ 551 |         },
+ 552 |         signal: abortA.signal,
+ 553 |       });
+ 554 | 
+ 555 |       const taskB = streamAnyChat({
+ 556 |         model: modelB,
+ 557 |         messages: apiMessages,
+ 558 |         options: {
+ 559 |           temperature: state.settings.temperature,
+ 560 |           topP: state.settings.topP,
+ 561 |           maxTokens: state.settings.maxTokens,
+ 562 |           contextWindow: state.settings.contextWindow || 4096,
+ 563 |         },
+ 564 |         settings: state.settings,
+ 565 |         localModels: state.models,
+ 566 |         onToken: (token) => {
+ 567 |           bufferB += token;
+ 568 |         },
+ 569 |         onDone: (parsed = {}) => {
+ 570 |           clearInterval(flushTimerB);
+ 571 |           if (bufferB) contentB += bufferB;
+ 572 |           bufferB = '';
+ 573 | 
+ 574 |           let metrics = null;
+ 575 |           if (parsed.eval_count && parsed.eval_duration) {
+ 576 |             metrics = {
+ 577 |               evalCount: parsed.eval_count,
+ 578 |               evalDuration: parsed.eval_duration,
+ 579 |               duration: (parsed.eval_duration / 1e9).toFixed(1),
+ 580 |               tokPerSec: (parsed.eval_count / (parsed.eval_duration / 1e9)).toFixed(1),
+ 581 |               model: parsed.model || modelB,
+ 582 |             };
+ 583 |           }
+ 584 | 
+ 585 |           dispatch({
+ 586 |             type: 'UPDATE_ARENA_MESSAGE',
+ 587 |             payload: {
+ 588 |               conversationId: currentConvoId,
+ 589 |               modelKey: 'modelB',
+ 590 |               patch: { content: contentB, isStreaming: false, metrics },
+ 591 |             },
+ 592 |           });
+ 593 |         },
+ 594 |         onError: (error) => {
+ 595 |           clearInterval(flushTimerB);
+ 596 |           bufferB = '';
+ 597 |           contentB += `\n\n⚠️ Error (${modelB}): ${error.message}`;
+ 598 |           dispatch({
+ 599 |             type: 'UPDATE_ARENA_MESSAGE',
+ 600 |             payload: {
+ 601 |               conversationId: currentConvoId,
+ 602 |               modelKey: 'modelB',
+ 603 |               patch: { content: contentB, isStreaming: false },
+ 604 |             },
+ 605 |           });
+ 606 |         },
+ 607 |         signal: abortB.signal,
+ 608 |       });
+ 609 | 
+ 610 |       try {
+ 611 |         await Promise.allSettled([taskA, taskB]);
+ 612 |       } finally {
+ 613 |         clearInterval(flushTimerA);
+ 614 |         clearInterval(flushTimerB);
+ 615 |         arenaAbortControllersRef.current = [];
+ 616 |         dispatch({ type: 'SET_STREAMING', payload: false });
+ 617 |       }
+ 618 |     },
+ 619 |     [dispatch, state.settings]
+     :     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 620 |   );
+     `----
+  help: Either include it or remove the dependency array.
+
+  ! react-hooks(exhaustive-deps): React Hook useCallback has a missing dependency: 'allPersonas'
+     ,-[src/components/Chat/ChatView.jsx:773:5]
+ 692 |       const personaKey = activeConvo?.persona || state.settings.defaultPersona || 'default';
+ 693 |       const personaObj = allPersonas.find((p) => p.id === personaKey);
+     :                          ^^^^^|^^^^^
+     :                               `-- useCallback uses `allPersonas` here
+ 694 |       const effectiveSystemPrompt = [
+ 695 |         personaObj?.systemPrompt,
+ 696 |         state.settings.systemPrompt,
+ 697 |       ].filter(Boolean).join('\n\n');
+ 698 | 
+ 699 |       const apiMessages = [];
+ 700 |       if (effectiveSystemPrompt) {
+ 701 |         apiMessages.push({ role: 'system', content: effectiveSystemPrompt });
+ 702 |       }
+ 703 |       if (activeConvo) {
+ 704 |         activeConvo.messages.forEach((m) => {
+ 705 |           apiMessages.push(formatMessageForApi(m));
+ 706 |         });
+ 707 |       }
+ 708 | 
+ 709 |       if (webSources.length > 0) {
+ 710 |         const searchContext = formatSearchContext(text.trim(), webSources);
+ 711 |         apiMessages.push({
+ 712 |           role: 'user',
+ 713 |           content: `${searchContext}\n\n[USER INQUIRY]\n${promptText}`,
+ 714 |         });
+ 715 |       } else {
+ 716 |         apiMessages.push(formatMessageForApi(userMessage));
+ 717 |       }
+ 718 | 
+ 719 |       // Handle Arena Mode (Dual Parallel Stream)
+ 720 |       if (arenaMode) {
+ 721 |         const targetModelA = arenaModelA || state.models[0]?.name || targetModel;
+ 722 |         const targetModelB = arenaModelB || state.models[1]?.name || state.models[0]?.name || targetModel;
+ 723 | 
+ 724 |         const arenaAssistantMessage = {
+ 725 |           role: 'assistant',
+ 726 |           isArena: true,
+ 727 |           timestamp: new Date().toISOString(),
+ 728 |           modelA: {
+ 729 |             name: targetModelA,
+ 730 |             content: '',
+ 731 |             isStreaming: true,
+ 732 |             metrics: null,
+ 733 |           },
+ 734 |           modelB: {
+ 735 |             name: targetModelB,
+ 736 |             content: '',
+ 737 |             isStreaming: true,
+ 738 |             metrics: null,
+ 739 |           },
+ 740 |           vote: null,
+ 741 |         };
+ 742 | 
+ 743 |         dispatch({
+ 744 |           type: 'CREATE_AND_ADD_MESSAGES',
+ 745 |           payload: {
+ 746 |             conversationId: convoId,
+ 747 |             userMessage,
+ 748 |             assistantMessage: arenaAssistantMessage,
+ 749 |             model: `${targetModelA} vs ${targetModelB}`,
+ 750 |           },
+ 751 |         });
+ 752 | 
+ 753 |         setTimeout(() => scrollToBottom('smooth'), 50);
+ 754 |         await runArenaStream(convoId, targetModelA, targetModelB, apiMessages);
+ 755 |         return;
+ 756 |       }
+ 757 | 
+ 758 |       // Standard single model stream
+ 759 |       const assistantMessage = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
+ 760 |       dispatch({
+ 761 |         type: 'CREATE_AND_ADD_MESSAGES',
+ 762 |         payload: {
+ 763 |           conversationId: convoId,
+ 764 |           userMessage,
+ 765 |           assistantMessage,
+ 766 |           model: targetModel,
+ 767 |         },
+ 768 |       });
+ 769 | 
+ 770 |       setTimeout(() => scrollToBottom('smooth'), 50);
+ 771 |       await runStream(convoId, targetModel, apiMessages);
+ 772 |     },
+ 773 |     [state.isConnected, state.settings, state.models, activeConvo, state.activeConversationId, dispatch, runStream, runArenaStream, arenaMode, arenaModelA, arenaModelB]
+     :     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 774 |   );
+     `----
+  help: Either include it or remove the dependency array.
+
+Found 18 warnings and 1 error.
+Finished in 8ms on 71 files with 92 rules using 10 threads.

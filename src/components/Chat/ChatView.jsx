@@ -19,23 +19,23 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import DownloadIcon from '@mui/icons-material/Download';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import FolderIcon from '@mui/icons-material/Folder';
-import SearchIcon from '@mui/icons-material/Search';
-import CloseIcon from '@mui/icons-material/Close';
-import ShareIcon from '@mui/icons-material/Share';
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import MemoryIcon from '@mui/icons-material/Memory';
-import SportsMmaIcon from '@mui/icons-material/SportsMma';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
-import LanguageIcon from '@mui/icons-material/Language';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import Divider from '@mui/material/Divider';
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Copy,
+  Check,
+  Bot,
+  Folder,
+  Search,
+  X,
+  Share2,
+  Brain,
+  Swords,
+  PlusCircle,
+  FileText,
+} from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import WelcomeScreen from './WelcomeScreen';
@@ -46,13 +46,15 @@ import ArenaMessageBubble from './ArenaMessageBubble';
 import ArtifactSandboxDrawer from './ArtifactSandboxDrawer';
 import ContextMeter from './ContextMeter';
 import PersonaDialog from './PersonaDialog';
+import ApiKeyDialog from '../common/ApiKeyDialog';
 import { useChatStore } from '../../store/chatContext';
-import { streamChat, generateConversationTitle } from '../../services/ollamaService';
+import { generateConversationTitle } from '../../services/ollamaService';
+import { streamAnyChat, MissingApiKeyError } from '../../services/aiProviderService';
+import { PROVIDERS, resolveModelProvider } from '../../constants/apiProviders';
 import { useSpeechSynthesis } from '../../hooks/useAudio';
 import { AI_PERSONAS } from '../../constants/appConstants';
 import { getAllPersonas } from '../../utils/personaStorage';
 import { performWebSearch, formatSearchContext } from '../../services/webSearchService';
-import { estimateConversationTokens } from '../../utils/documentUtils';
 import { showToast } from '../../utils/toast';
 import { exportConversationToPdf } from '../../utils/pdfExportUtils';
 import { v4 as uuidv4 } from 'uuid';
@@ -82,7 +84,7 @@ const formatMessageForApi = (msg) => {
 
 const EMPTY_MESSAGES = [];
 
-export default function ChatView() {
+export default function ChatView({ onOpenSettings }) {
   const theme = useTheme();
   const { state, dispatch, getActiveConversation } = useChatStore();
   const activeConvo = getActiveConversation();
@@ -120,6 +122,9 @@ export default function ChatView() {
 
   // Persona Menu state
   const [personaAnchorEl, setPersonaAnchorEl] = useState(null);
+
+  // Missing API Key Dialog state
+  const [missingKeyDialog, setMissingKeyDialog] = useState(null);
 
   // Centralized Speech-to-Text & Text-to-Speech
   const { speak, stop, isSpeaking } = useSpeechSynthesis();
@@ -346,7 +351,7 @@ export default function ChatView() {
 
       abortControllerRef.current = new AbortController();
 
-      await streamChat({
+      await streamAnyChat({
         model: targetModel,
         messages: apiMessages,
         options: {
@@ -355,7 +360,8 @@ export default function ChatView() {
           maxTokens: state.settings.maxTokens,
           contextWindow: state.settings.contextWindow || 4096,
         },
-        ollamaUrl: state.settings.ollamaUrl,
+        settings: state.settings,
+        localModels: state.models,
         onToken: (token) => {
           tokenBufferRef.current += token;
         },
@@ -424,6 +430,12 @@ export default function ChatView() {
             flushTimerRef.current = null;
           }
           tokenBufferRef.current = '';
+          if (error instanceof MissingApiKeyError || error.name === 'MissingApiKeyError') {
+            setMissingKeyDialog({
+              providerId: error.provider,
+              modelName: error.model,
+            });
+          }
           dispatch({
             type: 'APPEND_TO_LAST_MESSAGE',
             payload: {
@@ -485,7 +497,7 @@ export default function ChatView() {
         }
       }, 35);
 
-      const taskA = streamChat({
+      const taskA = streamAnyChat({
         model: modelA,
         messages: apiMessages,
         options: {
@@ -494,7 +506,8 @@ export default function ChatView() {
           maxTokens: state.settings.maxTokens,
           contextWindow: state.settings.contextWindow || 4096,
         },
-        ollamaUrl: state.settings.ollamaUrl,
+        settings: state.settings,
+        localModels: state.models,
         onToken: (token) => {
           bufferA += token;
         },
@@ -539,7 +552,7 @@ export default function ChatView() {
         signal: abortA.signal,
       });
 
-      const taskB = streamChat({
+      const taskB = streamAnyChat({
         model: modelB,
         messages: apiMessages,
         options: {
@@ -548,7 +561,8 @@ export default function ChatView() {
           maxTokens: state.settings.maxTokens,
           contextWindow: state.settings.contextWindow || 4096,
         },
-        ollamaUrl: state.settings.ollamaUrl,
+        settings: state.settings,
+        localModels: state.models,
         onToken: (token) => {
           bufferB += token;
         },
@@ -607,20 +621,31 @@ export default function ChatView() {
 
   const handleSend = useCallback(
     async (text, model, attachedImages = [], options = {}) => {
-      if (!state.isConnected) {
-        console.warn('Cannot send: not connected to Ollama');
-        return;
-      }
-
       const targetModel =
         model ||
         activeConvo?.model ||
         state.settings.selectedModel ||
-        state.models[0]?.name;
+        state.models[0]?.name ||
+        'gpt-6-astra';
 
-      if (!targetModel) {
-        console.warn('Cannot send: no model available');
+      const { provider } = resolveModelProvider(targetModel, state.models);
+      const isOnline = provider !== PROVIDERS.OLLAMA;
+
+      if (!isOnline && !state.isConnected) {
+        showToast('Please connect to Ollama or select an online cloud model.', 'warning');
         return;
+      }
+
+      if (isOnline) {
+        const hasKey = Boolean(state.settings.apiKeys?.[provider]?.trim());
+        if (!hasKey) {
+          setMissingKeyDialog({
+            providerId: provider,
+            modelName: targetModel,
+            pendingAction: () => handleSend(text, model, attachedImages, options),
+          });
+          return;
+        }
       }
 
       const cleanImages = (attachedImages || []).map((img) => ({
@@ -937,8 +962,7 @@ export default function ChatView() {
             py: 1,
             borderBottom: '1px solid',
             borderColor: 'divider',
-            bgcolor: alpha(theme.palette.background.paper, 0.4),
-            backdropFilter: 'blur(10px)',
+            bgcolor: 'background.paper',
             zIndex: 5,
             gap: 1.5,
           }}
@@ -954,7 +978,7 @@ export default function ChatView() {
 
             {activeConvo.model && (
               <Chip
-                icon={<SmartToyIcon sx={{ fontSize: '13px !important' }} />}
+                icon={<Bot size={13} style={{ marginLeft: 6 }} />}
                 label={activeConvo.model}
                 size="small"
                 variant="outlined"
@@ -971,7 +995,7 @@ export default function ChatView() {
             {/* AI Persona Selector */}
             <Tooltip title={`Current Persona: ${currentPersona.name} (Click to switch)`}>
               <Chip
-                icon={<PsychologyIcon sx={{ fontSize: '13px !important', color: `${theme.palette.secondary.main} !important` }} />}
+                icon={<Brain size={13} style={{ marginLeft: 6, color: theme.palette.secondary.main }} />}
                 label={currentPersona.name}
                 size="small"
                 onClick={(e) => setPersonaAnchorEl(e.currentTarget)}
@@ -1005,7 +1029,7 @@ export default function ChatView() {
             {activeProject ? (
               <Tooltip title="Click to change or remove project folder">
                 <Chip
-                  icon={<FolderIcon sx={{ fontSize: '13px !important', color: `${activeProject.color} !important` }} />}
+                  icon={<Folder size={13} style={{ marginLeft: 6, color: activeProject.color }} />}
                   label={activeProject.name}
                   size="small"
                   onClick={() => setMoveModalOpen(true)}
@@ -1029,7 +1053,7 @@ export default function ChatView() {
               (state.projects || []).length > 0 && (
                 <Tooltip title="Organize into project folder">
                   <Chip
-                    icon={<FolderIcon sx={{ fontSize: '13px !important' }} />}
+                    icon={<Folder size={13} style={{ marginLeft: 6 }} />}
                     label="+ Project"
                     size="small"
                     onClick={() => setMoveModalOpen(true)}
@@ -1066,7 +1090,7 @@ export default function ChatView() {
                   },
                 }}
               >
-                <SportsMmaIcon fontSize="small" />
+                <Swords size={16} />
               </IconButton>
             </Tooltip>
 
@@ -1082,25 +1106,25 @@ export default function ChatView() {
                 }}
                 sx={{ color: searchOpen ? 'primary.main' : 'text.secondary' }}
               >
-                <SearchIcon fontSize="small" />
+                <Search size={16} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Share & Save Chat">
               <IconButton size="small" onClick={() => setShareModalOpen(true)} sx={{ color: 'text.secondary' }}>
-                <ShareIcon fontSize="small" />
+                <Share2 size={16} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title={copiedChat ? 'Copied!' : 'Copy full conversation'}>
               <IconButton size="small" onClick={handleCopyEntireChat} sx={{ color: 'text.secondary' }}>
-                {copiedChat ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                {copiedChat ? <Check size={16} /> : <Copy size={16} />}
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Export as Markdown (.md)">
               <IconButton size="small" onClick={handleExportMarkdown} sx={{ color: 'text.secondary' }}>
-                <DownloadIcon fontSize="small" />
+                <Download size={16} />
               </IconButton>
             </Tooltip>
 
@@ -1118,7 +1142,7 @@ export default function ChatView() {
                   '&:hover': { color: 'error.main' },
                 }}
               >
-                <PictureAsPdfIcon fontSize="small" />
+                <FileText size={16} />
               </IconButton>
             </Tooltip>
           </Box>
@@ -1142,7 +1166,7 @@ export default function ChatView() {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SportsMmaIcon sx={{ color: 'secondary.main', fontSize: 18 }} />
+            <Swords size={18} color={theme.palette.secondary.main} />
             <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.main', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Model Arena
             </Typography>
@@ -1233,7 +1257,7 @@ export default function ChatView() {
               bgcolor: alpha(theme.palette.background.default, 0.6),
             }}
           >
-            <SearchIcon sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />
+            <Search size={18} style={{ color: theme.palette.text.secondary, marginRight: 8 }} />
             <InputBase
               inputRef={searchInputRef}
               value={searchQuery}
@@ -1260,7 +1284,7 @@ export default function ChatView() {
           <Tooltip title="Previous match (Shift+Enter)">
             <span>
               <IconButton size="small" onClick={handlePrevMatch} disabled={matchingIndices.length === 0}>
-                <KeyboardArrowUpIcon fontSize="small" />
+                <ChevronUp size={16} />
               </IconButton>
             </span>
           </Tooltip>
@@ -1268,7 +1292,7 @@ export default function ChatView() {
           <Tooltip title="Next match (Enter)">
             <span>
               <IconButton size="small" onClick={handleNextMatch} disabled={matchingIndices.length === 0}>
-                <KeyboardArrowDownIcon fontSize="small" />
+                <ChevronDown size={16} />
               </IconButton>
             </span>
           </Tooltip>
@@ -1282,7 +1306,7 @@ export default function ChatView() {
               }}
               sx={{ color: 'text.secondary' }}
             >
-              <CloseIcon fontSize="small" />
+              <X size={16} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -1363,9 +1387,8 @@ export default function ChatView() {
             position: 'absolute',
             bottom: 95,
             right: { xs: 20, md: 32 },
-            bgcolor: alpha(theme.palette.background.paper, 0.85),
+            bgcolor: 'background.paper',
             color: 'text.primary',
-            backdropFilter: 'blur(8px)',
             border: '1px solid',
             borderColor: 'divider',
             boxShadow: `0 4px 14px ${alpha(theme.palette.common.black, 0.15)}`,
@@ -1375,7 +1398,7 @@ export default function ChatView() {
             zIndex: 10,
           }}
         >
-          <KeyboardArrowDownIcon />
+          <ChevronDown size={18} />
         </Fab>
       )}
 
@@ -1386,6 +1409,7 @@ export default function ChatView() {
         disabled={state.isStreaming}
         replyTo={replyToMessage}
         onCancelReply={() => setReplyToMessage(null)}
+        onOpenSettings={onOpenSettings}
       />
 
       {/* AI Persona Selector Menu (built-in + custom) */}
@@ -1438,7 +1462,7 @@ export default function ChatView() {
                 {p.desc}
               </Typography>
             </Box>
-            {p.id === currentPersonaKey && <CheckIcon fontSize="small" color="primary" sx={{ ml: 1.5 }} />}
+            {p.id === currentPersonaKey && <Check size={16} color={theme.palette.primary.main} style={{ marginLeft: 12 }} />}
           </MenuItem>
         ))}
         <Divider sx={{ my: 0.5 }} />
@@ -1449,7 +1473,7 @@ export default function ChatView() {
           }}
           sx={{ py: 1, color: 'primary.main' }}
         >
-          <AddCircleIcon sx={{ fontSize: 18, mr: 1 }} />
+          <PlusCircle size={18} style={{ marginRight: 8 }} />
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             Create Custom Persona…
           </Typography>
@@ -1549,6 +1573,25 @@ export default function ChatView() {
         onClose={() => setSandboxArtifact(null)}
         artifact={sandboxArtifact}
       />
+
+      {/* Missing API Key Dialog */}
+      {missingKeyDialog && (
+        <ApiKeyDialog
+          open={Boolean(missingKeyDialog)}
+          onClose={() => setMissingKeyDialog(null)}
+          providerId={missingKeyDialog.providerId}
+          modelName={missingKeyDialog.modelName}
+          onSuccess={() => {
+            const action = missingKeyDialog.pendingAction;
+            setMissingKeyDialog(null);
+            action?.();
+          }}
+          onOpenFullSettings={() => {
+            setMissingKeyDialog(null);
+            onOpenSettings?.(1);
+          }}
+        />
+      )}
     </Box>
   );
 }

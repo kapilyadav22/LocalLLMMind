@@ -4,7 +4,26 @@ const KEYS = {
   SETTINGS: 'llm_ui_settings',
   THEME_MODE: 'llm_ui_theme_mode',
   SHORTCUTS: 'llm_ui_shortcuts',
+  SIDEBAR_OPEN: 'llm_ui_sidebar_open',
 };
+
+export function loadSidebarOpen() {
+  try {
+    const data = localStorage.getItem(KEYS.SIDEBAR_OPEN);
+    if (data === null) return true;
+    return data === 'true';
+  } catch {
+    return true;
+  }
+}
+
+export function saveSidebarOpen(open) {
+  try {
+    localStorage.setItem(KEYS.SIDEBAR_OPEN, String(open));
+  } catch (e) {
+    console.error('Failed to save sidebar state:', e);
+  }
+}
 
 export function loadConversations() {
   try {

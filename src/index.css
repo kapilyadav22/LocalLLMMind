@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ─── Reset & Base ───────────────────────────────────────── */
 *,
@@ -39,7 +39,7 @@ html, body, #root {
 
 /* ─── Selection ──────────────────────────────────────────── */
 ::selection {
-  background: rgba(6, 182, 212, 0.3);
+  background: rgba(59, 130, 246, 0.25);
   color: inherit;
 }
 

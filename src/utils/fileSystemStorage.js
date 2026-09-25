@@ -159,7 +159,7 @@ export async function syncToDirectory(dirHandle, { conversations = [], projects 
   // 3. Write memory_manifest.json
   const manifest = {
     application: 'LocalLLMMind',
-    developer: 'Kapil Kumar Yadav',
+    developer: 'Kapil Yadav',
     version: '1.3.0',
     lastSyncedAt: new Date().toISOString(),
     totalConversations: conversations.length,

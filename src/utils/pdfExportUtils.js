@@ -1,7 +1,7 @@
 /**
  * PDF & Print Export Utility for LocalLLMMind
  * Generates an executive, beautifully styled printable document and triggers browser print-to-PDF.
- * Engineered for LocalLLMMind by Kapil Kumar Yadav.
+ * Engineered for LocalLLMMind by Kapil Yadav.
  */
 
 function escapeHtml(unsafe) {

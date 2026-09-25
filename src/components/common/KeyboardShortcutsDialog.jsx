@@ -10,8 +10,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import KeyboardIcon from '@mui/icons-material/Keyboard';
+import { X, Keyboard } from 'lucide-react';
 import ShortcutsManager from './ShortcutsManager';
 
 export default function KeyboardShortcutsDialog({ open, onClose }) {
@@ -60,7 +59,7 @@ export default function KeyboardShortcutsDialog({ open, onClose }) {
               justifyContent: 'center',
             }}
           >
-            <KeyboardIcon sx={{ fontSize: 20 }} />
+            <Keyboard size={18} />
           </Box>
           <Box>
             <Typography variant="subtitle1" component="span" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
@@ -72,7 +71,7 @@ export default function KeyboardShortcutsDialog({ open, onClose }) {
           </Box>
         </Box>
         <IconButton size="small" onClick={onClose}>
-          <CloseIcon fontSize="small" />
+          <X size={18} />
         </IconButton>
       </DialogTitle>
 

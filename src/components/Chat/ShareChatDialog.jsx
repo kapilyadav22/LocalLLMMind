@@ -16,15 +16,16 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ShareIcon from '@mui/icons-material/Share';
-import ImageIcon from '@mui/icons-material/Image';
-import TextSnippetIcon from '@mui/icons-material/TextSnippet';
-import DownloadIcon from '@mui/icons-material/Download';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import {
+  X,
+  Copy,
+  Share2,
+  Image,
+  FileText,
+  Download,
+  Bot,
+  CheckCircle2,
+} from 'lucide-react';
 import { toPng } from 'html-to-image';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 import { showToast } from '../../utils/toast';
@@ -59,7 +60,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
       }
       md += `---\n\n`;
     });
-    md += `\n*Exported using LocalLLMMind · Created by Kapil Kumar Yadav*\n`;
+    md += `\n*Exported using LocalLLMMind · Created by Kapil Yadav*\n`;
     return md;
   };
 
@@ -70,7 +71,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
       const role = m.role === 'user' ? 'You' : 'Assistant';
       txt += `[${role}]:\n${m.content}\n\n`;
     });
-    txt += `\nExported from LocalLLMMind by Kapil Kumar Yadav\n`;
+    txt += `\nExported from LocalLLMMind by Kapil Yadav\n`;
     return txt;
   };
 
@@ -235,7 +236,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
               justifyContent: 'center',
             }}
           >
-            <ShareIcon fontSize="small" />
+            <Share2 size={18} />
           </Box>
           <Box>
             <Typography variant="h6" component="span" sx={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.2 }}>
@@ -247,7 +248,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
           </Box>
         </Box>
         <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
-          <CloseIcon fontSize="small" />
+          <X size={18} />
         </IconButton>
       </DialogTitle>
 
@@ -268,7 +269,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Chip
-              icon={<SmartToyIcon sx={{ fontSize: '13px !important' }} />}
+              icon={<Bot size={13} style={{ marginLeft: 6 }} />}
               label={model}
               size="small"
               variant="outlined"
@@ -304,9 +305,9 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
               <CardActionArea onClick={handleCopyChat} sx={{ p: 2, height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                   {copiedSuccess ? (
-                    <CheckCircleIcon color="success" />
+                    <CheckCircle2 size={20} color={theme.palette.success.main} />
                   ) : (
-                    <ContentCopyIcon color="primary" />
+                    <Copy size={20} color={theme.palette.primary.main} />
                   )}
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     {copiedSuccess ? 'Copied!' : 'Copy Chat'}
@@ -336,7 +337,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             >
               <CardActionArea onClick={handleNativeShare} sx={{ p: 2, height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                  <ShareIcon color="primary" />
+                  <Share2 size={20} color={theme.palette.primary.main} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Share Link / App
                   </Typography>
@@ -369,7 +370,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
                 sx={{ p: 2, height: '100%' }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                  {isExportingImage ? <CircularProgress size={20} /> : <ImageIcon color="primary" />}
+                  {isExportingImage ? <CircularProgress size={20} /> : <Image size={20} color={theme.palette.primary.main} />}
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     {isExportingImage ? 'Generating Image...' : 'Save as Image (.png)'}
                   </Typography>
@@ -398,7 +399,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             >
               <CardActionArea onClick={handleSaveAsMarkdown} sx={{ p: 2, height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                  <DownloadIcon color="primary" />
+                  <Download size={20} color={theme.palette.primary.main} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Save as Markdown (.md)
                   </Typography>
@@ -427,7 +428,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             >
               <CardActionArea onClick={handleExportPdf} sx={{ p: 2, height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                  <PictureAsPdfIcon color="error" />
+                  <FileText size={20} color={theme.palette.error.main} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Print / Export as PDF
                   </Typography>
@@ -456,7 +457,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             >
               <CardActionArea onClick={handleSaveAsText} sx={{ p: 2, height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                  <TextSnippetIcon color="primary" />
+                  <FileText size={20} color={theme.palette.primary.main} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Save as Plain Text (.txt)
                   </Typography>
@@ -553,7 +554,7 @@ export default function ShareChatDialog({ open, onClose, conversation }) {
             {/* Footer Watermark */}
             <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
               <Typography variant="caption" sx={{ opacity: 0.6, fontSize: '0.72rem' }}>
-                Exported with LocalLLMMind • Designed by Kapil Kumar Yadav
+                Exported with LocalLLMMind • Designed by Kapil Yadav
               </Typography>
             </Box>
           </Box>

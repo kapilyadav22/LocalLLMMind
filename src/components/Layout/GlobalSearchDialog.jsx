@@ -20,11 +20,13 @@ import {
   alpha,
   useTheme,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import PersonIcon from '@mui/icons-material/Person';
-import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import {
+  X,
+  Search,
+  Bot,
+  User,
+  MessageSquare,
+} from 'lucide-react';
 import { useChatStore } from '../../store/chatContext';
 
 function highlightMatch(text, query) {
@@ -178,10 +180,11 @@ export default function GlobalSearchDialog({ open, onClose }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: `linear-gradient(135deg, #00e5ff, ${theme.palette.primary.main})`,
+              bgcolor: 'primary.main',
+              color: '#fff',
             }}
           >
-            <SearchIcon sx={{ color: '#fff', fontSize: 20 }} />
+            <Search size={18} />
           </Box>
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
@@ -195,7 +198,7 @@ export default function GlobalSearchDialog({ open, onClose }) {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Chip label="⌘⇧F" size="small" sx={{ fontSize: '0.68rem', fontWeight: 700, fontFamily: 'monospace', height: 22 }} />
           <IconButton size="small" onClick={onClose}>
-            <CloseIcon fontSize="small" />
+            <X size={18} />
           </IconButton>
         </Box>
       </DialogTitle>
@@ -213,13 +216,13 @@ export default function GlobalSearchDialog({ open, onClose }) {
             input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                  <Search size={18} color={theme.palette.text.secondary} />
                 </InputAdornment>
               ),
               endAdornment: query && (
                 <InputAdornment position="end">
                   <IconButton size="small" onClick={() => setQuery('')}>
-                    <CloseIcon sx={{ fontSize: 16 }} />
+                    <X size={15} />
                   </IconButton>
                 </InputAdornment>
               ),
@@ -237,7 +240,7 @@ export default function GlobalSearchDialog({ open, onClose }) {
       <DialogContent sx={{ pt: 0, px: 3, pb: 3 }}>
         {query.length < 2 ? (
           <Box sx={{ textAlign: 'center', py: 6 }}>
-            <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+            <Search size={40} color={theme.palette.text.disabled} style={{ marginBottom: 8 }} />
             <Typography color="text.secondary">
               Type at least 2 characters to search
             </Typography>
@@ -277,7 +280,7 @@ export default function GlobalSearchDialog({ open, onClose }) {
                 >
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-                      <ChatBubbleIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                      <MessageSquare size={14} color={theme.palette.primary.main} />
                       <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.88rem' }} noWrap>
                         {result.titleMatch
                           ? highlightMatch(result.conversation.title, query)
@@ -331,9 +334,9 @@ export default function GlobalSearchDialog({ open, onClose }) {
                     <Box sx={{ display: 'flex', gap: 1.5, width: '100%', minWidth: 0 }}>
                       <Box sx={{ mt: 0.25, flexShrink: 0 }}>
                         {match.role === 'user' ? (
-                          <PersonIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
+                          <User size={15} color={theme.palette.secondary.main} />
                         ) : (
-                          <SmartToyIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                          <Bot size={15} color={theme.palette.primary.main} />
                         )}
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>

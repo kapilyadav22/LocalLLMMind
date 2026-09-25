@@ -19,15 +19,16 @@ import {
   alpha,
   useTheme,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import KeyboardIcon from '@mui/icons-material/Keyboard';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CloseIcon from '@mui/icons-material/Close';
+import {
+  Search,
+  Plus,
+  Edit3,
+  Trash2,
+  RotateCcw,
+  Keyboard,
+  CheckCircle2,
+  X,
+} from 'lucide-react';
 
 import { useChatStore } from '../../store/chatContext';
 import { showCustomConfirm } from '../../utils/dialogService';
@@ -270,7 +271,7 @@ export default function ShortcutsManager() {
           onChange={(e) => setSearch(e.target.value)}
           slotProps={{
             input: {
-              startAdornment: <SearchIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 1 }} />,
+              startAdornment: <Search size={16} color={theme.palette.text.secondary} style={{ marginRight: 8 }} />,
             },
           }}
           sx={{ minWidth: 260, flex: 1 }}
@@ -280,7 +281,7 @@ export default function ShortcutsManager() {
           <Button
             variant="contained"
             size="small"
-            startIcon={<AddIcon />}
+            startIcon={<Plus size={15} />}
             onClick={() => setCreateDialogOpen(true)}
             sx={{ fontWeight: 600, textTransform: 'none' }}
           >
@@ -292,7 +293,7 @@ export default function ShortcutsManager() {
               variant="outlined"
               size="small"
               color="inherit"
-              startIcon={<RestartAltIcon />}
+              startIcon={<RotateCcw size={15} />}
               onClick={handleResetAll}
               sx={{ textTransform: 'none' }}
             >
@@ -399,10 +400,13 @@ export default function ShortcutsManager() {
                           gap: 0.75,
                         }}
                       >
-                        <FiberManualRecordIcon
+                        <Box
+                          component="span"
                           sx={{
-                            fontSize: 10,
-                            color: 'error.main',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'error.main',
                             animation: 'pulse 1.5s infinite',
                             '@keyframes pulse': {
                               '0%': { opacity: 0.3 },
@@ -416,10 +420,10 @@ export default function ShortcutsManager() {
                         </Typography>
                       </Box>
                       <IconButton size="small" color="primary" onClick={() => handleSaveInline(item.id)}>
-                        <CheckCircleIcon fontSize="small" />
+                        <CheckCircle2 size={16} />
                       </IconButton>
                       <IconButton size="small" onClick={() => { setEditingId(null); setRecordedKeys(null); }}>
-                        <CloseIcon fontSize="small" />
+                        <X size={16} />
                       </IconButton>
                     </Box>
                   ) : (
@@ -454,7 +458,7 @@ export default function ShortcutsManager() {
                         }}
                         sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                       >
-                        <EditIcon sx={{ fontSize: 16 }} />
+                        <Edit3 size={15} />
                       </IconButton>
                     </Tooltip>
                   )}
@@ -467,7 +471,7 @@ export default function ShortcutsManager() {
                         onClick={() => handleResetSingle(item.id)}
                         sx={{ color: 'text.secondary', '&:hover': { color: 'info.main' } }}
                       >
-                        <RestartAltIcon sx={{ fontSize: 16 }} />
+                        <RotateCcw size={15} />
                       </IconButton>
                     </Tooltip>
                   )}
@@ -480,7 +484,7 @@ export default function ShortcutsManager() {
                         onClick={() => handleDeleteCustom(item.id)}
                         sx={{ color: 'error.main' }}
                       >
-                        <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                        <Trash2 size={15} />
                       </IconButton>
                     </Tooltip>
                   )}
@@ -515,7 +519,7 @@ export default function ShortcutsManager() {
         }}
       >
         <DialogTitle component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <KeyboardIcon color="primary" />
+          <Keyboard size={20} color={theme.palette.primary.main} />
           <Typography variant="h6" component="span" sx={{ fontWeight: 700 }}>
             Create Custom Shortcut
           </Typography>
@@ -606,10 +610,13 @@ export default function ShortcutsManager() {
             >
               {isRecordingNew ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                  <FiberManualRecordIcon
+                  <Box
+                    component="span"
                     sx={{
-                      fontSize: 12,
-                      color: 'error.main',
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      bgcolor: 'error.main',
                       animation: 'pulse 1.5s infinite',
                       '@keyframes pulse': {
                         '0%': { opacity: 0.3 },

@@ -11,11 +11,13 @@ import {
   alpha,
   Zoom,
 } from '@mui/material';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
+import {
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  HelpCircle,
+} from 'lucide-react';
 
 export default function CustomAlertDialog() {
   const theme = useTheme();
@@ -64,28 +66,28 @@ export default function CustomAlertDialog() {
     switch (type) {
       case 'success':
         return {
-          icon: <CheckCircleRoundedIcon sx={{ fontSize: 34, color: 'success.main' }} />,
+          icon: <CheckCircle2 size={32} color={theme.palette.success.main} />,
           color: theme.palette.success.main,
           defaultBtnColor: 'success',
         };
       case 'error':
         return {
-          icon: <ErrorOutlineRoundedIcon sx={{ fontSize: 34, color: 'error.main' }} />,
+          icon: <AlertCircle size={32} color={theme.palette.error.main} />,
           color: theme.palette.error.main,
           defaultBtnColor: 'error',
         };
       case 'warning':
         return {
-          icon: <WarningAmberRoundedIcon sx={{ fontSize: 34, color: 'warning.main' }} />,
+          icon: <AlertTriangle size={32} color={theme.palette.warning.main} />,
           color: theme.palette.warning.main,
           defaultBtnColor: 'warning',
         };
       default:
         return {
           icon: isConfirm ? (
-            <HelpOutlineRoundedIcon sx={{ fontSize: 34, color: 'primary.main' }} />
+            <HelpCircle size={32} color={theme.palette.primary.main} />
           ) : (
-            <InfoOutlinedIcon sx={{ fontSize: 34, color: 'primary.main' }} />
+            <Info size={32} color={theme.palette.primary.main} />
           ),
           color: theme.palette.primary.main,
           defaultBtnColor: 'primary',

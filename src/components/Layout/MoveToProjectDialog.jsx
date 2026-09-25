@@ -13,11 +13,13 @@ import {
   ListItemText,
   alpha,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import FolderIcon from '@mui/icons-material/Folder';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined';
-import CheckIcon from '@mui/icons-material/Check';
-import AddIcon from '@mui/icons-material/Add';
+import {
+  X,
+  Folder,
+  MessageSquare,
+  Check,
+  Plus,
+} from 'lucide-react';
 
 export default function MoveToProjectDialog({
   open,
@@ -69,7 +71,7 @@ export default function MoveToProjectDialog({
           </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} aria-label="Close dialog">
-          <CloseIcon fontSize="small" />
+          <X size={18} />
         </IconButton>
       </DialogTitle>
 
@@ -90,8 +92,8 @@ export default function MoveToProjectDialog({
               borderColor: currentProjectId === null ? 'primary.main' : 'transparent',
             }}
           >
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <ChatBubbleOutlineIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+            <ListItemIcon sx={{ minWidth: 32 }}>
+              <MessageSquare size={16} color="var(--mui-palette-text-secondary, #71717a)" />
             </ListItemIcon>
             <ListItemText
               primary="General (No Project)"
@@ -100,7 +102,7 @@ export default function MoveToProjectDialog({
                 fontWeight: currentProjectId === null ? 600 : 400,
               }}
             />
-            {currentProjectId === null && <CheckIcon sx={{ fontSize: 18, color: 'primary.main' }} />}
+            {currentProjectId === null && <Check size={16} color="var(--mui-palette-primary-main, #3b82f6)" />}
           </ListItemButton>
 
           {/* Project options */}
@@ -125,8 +127,8 @@ export default function MoveToProjectDialog({
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <FolderIcon sx={{ fontSize: 18, color: project.color || 'primary.main' }} />
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <Folder size={16} color={project.color || 'var(--mui-palette-primary-main, #3b82f6)'} />
                 </ListItemIcon>
                 <ListItemText
                   primary={project.name}
@@ -135,7 +137,7 @@ export default function MoveToProjectDialog({
                     fontWeight: isSelected ? 600 : 400,
                   }}
                 />
-                {isSelected && <CheckIcon sx={{ fontSize: 18, color: project.color || 'primary.main' }} />}
+                {isSelected && <Check size={16} color={project.color || 'var(--mui-palette-primary-main, #3b82f6)'} />}
               </ListItemButton>
             );
           })}
@@ -145,7 +147,7 @@ export default function MoveToProjectDialog({
         <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
           <Button
             fullWidth
-            startIcon={<AddIcon />}
+            startIcon={<Plus size={16} />}
             onClick={() => {
               onClose();
               onCreateNewProject?.();

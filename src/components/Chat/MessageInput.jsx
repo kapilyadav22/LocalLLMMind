@@ -11,16 +11,18 @@ import {
   Fade,
   Alert,
 } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import StopCircleIcon from '@mui/icons-material/StopCircle';
-import MicIcon from '@mui/icons-material/Mic';
-import MicOffIcon from '@mui/icons-material/MicOff';
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import ReplyIcon from '@mui/icons-material/Reply';
-import CloseIcon from '@mui/icons-material/Close';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import LanguageIcon from '@mui/icons-material/Language';
+import {
+  Send,
+  Square,
+  Mic,
+  MicOff,
+  Image,
+  FileText,
+  CornerUpLeft,
+  X,
+  Sparkles,
+  Globe,
+} from 'lucide-react';
 import ModelSelector from '../common/ModelSelector';
 import SlashCommandPopover from './SlashCommandPopover';
 import PromptLibraryDialog from './PromptLibraryDialog';
@@ -32,14 +34,14 @@ import { processImageFile, formatImageSize } from '../../utils/imageUtils';
 import { isDocumentFile, readDocumentFile, formatDocumentsForPrompt } from '../../utils/documentUtils';
 import { showToast } from '../../utils/toast';
 
-export default function MessageInput({ onSend, onStop, disabled, replyTo = null, onCancelReply = null }) {
+export default function MessageInput({ onSend, onStop, disabled, replyTo = null, onCancelReply = null, onOpenSettings = null }) {
   const [input, setInput] = useState('');
   const [interimText, setInterimText] = useState('');
   const inputRef = useRef(null);
   const theme = useTheme();
   const { state, getActiveConversation, dispatch } = useChatStore();
   const activeConvo = getActiveConversation();
-  const currentModel = activeConvo?.model || state.settings.selectedModel || (state.models[0]?.name ?? '');
+  const currentModel = activeConvo?.model || state.settings.selectedModel || (state.models[0]?.name ?? '') || 'gpt-6-astra';
 
   // Prompt library and slash command popover state
   const [allPrompts, setAllPrompts] = useState(() => loadAllPrompts());
@@ -477,7 +479,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
               pointerEvents: 'none',
             }}
           >
-            <AddPhotoAlternateIcon sx={{ fontSize: 26, color: 'primary.main' }} />
+            <Image size={24} color={theme.palette.primary.main} />
             <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
               Drop images or code documents here to attach
             </Typography>
@@ -504,7 +506,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-              <ReplyIcon sx={{ fontSize: 16, color: 'primary.main', transform: 'scaleX(-1)' }} />
+              <CornerUpLeft size={14} color={theme.palette.primary.main} />
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block' }}>
                   Replying to {replyTo.role === 'user' ? 'You' : 'Assistant'}
@@ -519,7 +521,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
               </Box>
             </Box>
             <IconButton size="small" onClick={onCancelReply} sx={{ p: 0.5, color: 'text.secondary' }}>
-              <CloseIcon sx={{ fontSize: 14 }} />
+              <X size={13} />
             </IconButton>
           </Box>
         )}
@@ -539,7 +541,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
             {attachedDocuments.map((doc) => (
               <Chip
                 key={doc.id}
-                icon={<InsertDriveFileIcon sx={{ fontSize: '15px !important', color: 'primary.main !important' }} />}
+                icon={<FileText size={13} color={theme.palette.primary.main} />}
                 label={`${doc.name} (${doc.formattedSize})`}
                 onDelete={() => handleRemoveDocument(doc.id)}
                 size="small"
@@ -609,7 +611,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                     '&:hover': { bgcolor: 'rgba(0,0,0,0.9)' },
                   }}
                 >
-                  <CloseIcon sx={{ fontSize: 12 }} />
+                  <X size={11} />
                 </IconButton>
                 {img.size && (
                   <Box
@@ -684,6 +686,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
             value={currentModel}
             onChange={handleModelChange}
             variant="chip"
+            onOpenSettings={onOpenSettings}
           />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -699,17 +702,18 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                 size="small"
                 onClick={() => setWebSearchEnabled((prev) => !prev)}
                 sx={{
-                  color: webSearchEnabled ? '#00e5ff' : 'text.secondary',
-                  bgcolor: webSearchEnabled ? alpha('#00e5ff', 0.14) : 'transparent',
-                  border: webSearchEnabled ? `1px solid ${alpha('#00e5ff', 0.45)}` : '1px solid transparent',
+                  color: webSearchEnabled ? 'primary.main' : 'text.secondary',
+                  bgcolor: webSearchEnabled ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                  border: webSearchEnabled ? `1px solid ${alpha(theme.palette.primary.main, 0.3)}` : '1px solid transparent',
+                  p: '6px',
                   '&:hover': {
-                    color: '#00e5ff',
-                    bgcolor: alpha('#00e5ff', 0.22),
+                    color: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.15),
                   },
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <LanguageIcon sx={{ fontSize: 20 }} />
+                <Globe size={16} />
               </IconButton>
             </Tooltip>
 
@@ -721,14 +725,15 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                 sx={{
                   color: promptLibraryOpen ? 'primary.main' : 'text.secondary',
                   bgcolor: promptLibraryOpen ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                  p: '6px',
                   '&:hover': {
                     color: 'primary.main',
                     bgcolor: alpha(theme.palette.primary.main, 0.15),
                   },
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <AutoAwesomeIcon sx={{ fontSize: 20 }} />
+                <Sparkles size={16} />
               </IconButton>
             </Tooltip>
 
@@ -742,14 +747,15 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                   sx={{
                     color: (attachedImages.length > 0 || attachedDocuments.length > 0) ? 'primary.main' : 'text.secondary',
                     bgcolor: (attachedImages.length > 0 || attachedDocuments.length > 0) ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                    p: '6px',
                     '&:hover': {
                       color: 'primary.main',
                       bgcolor: alpha(theme.palette.primary.main, 0.15),
                     },
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.15s ease',
                   }}
                 >
-                  <AddPhotoAlternateIcon sx={{ fontSize: 20 }} />
+                  <Image size={16} />
                   <input
                     type="file"
                     accept="image/*,.txt,.md,.markdown,.json,.csv,.sql,.py,.js,.jsx,.ts,.tsx,.html,.css,.sh,.yml,.yaml,.xml,.env,.rs,.go,.java,.c,.cpp"
@@ -773,22 +779,16 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                       bgcolor: isListening
                         ? 'error.main'
                         : 'transparent',
+                      p: '6px',
                       '&:hover': {
                         bgcolor: isListening
                           ? 'error.dark'
                           : alpha(theme.palette.text.primary, 0.08),
                       },
-                      transition: 'all 0.2s ease',
-                      ...(isListening && {
-                        animation: 'micPulse 2s ease-in-out infinite',
-                        '@keyframes micPulse': {
-                          '0%, 100%': { boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.4)}` },
-                          '50%': { boxShadow: `0 0 0 8px ${alpha(theme.palette.error.main, 0)}` },
-                        },
-                      }),
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    {isListening ? <MicOffIcon sx={{ fontSize: 20 }} /> : <MicIcon sx={{ fontSize: 20 }} />}
+                    {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                   </IconButton>
                 </span>
               </Tooltip>
@@ -799,15 +799,17 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
               <Tooltip title="Stop generating">
                 <IconButton
                   onClick={onStop}
+                  size="small"
                   sx={{
-                    color: 'error.main',
-                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                    color: '#fff',
+                    bgcolor: 'error.main',
+                    p: '7px',
                     '&:hover': {
-                      bgcolor: alpha(theme.palette.error.main, 0.2),
+                      bgcolor: 'error.dark',
                     },
                   }}
                 >
-                  <StopCircleIcon />
+                  <Square size={14} />
                 </IconButton>
               </Tooltip>
             ) : (
@@ -816,11 +818,13 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                   <IconButton
                     onClick={handleSend}
                     disabled={(!input.trim() && attachedImages.length === 0) || disabled || isInputDisabled}
+                    size="small"
                     sx={{
                       color: (input.trim() || attachedImages.length > 0) && !isInputDisabled ? '#fff' : 'text.secondary',
                       bgcolor: (input.trim() || attachedImages.length > 0) && !isInputDisabled
                         ? 'primary.main'
                         : 'transparent',
+                      p: '7px',
                       '&:hover': {
                         bgcolor: (input.trim() || attachedImages.length > 0) && !isInputDisabled
                           ? 'primary.dark'
@@ -830,10 +834,10 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
                         color: 'text.secondary',
                         bgcolor: 'transparent',
                       },
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    <SendIcon sx={{ fontSize: 20 }} />
+                    <Send size={15} />
                   </IconButton>
                 </span>
               </Tooltip>

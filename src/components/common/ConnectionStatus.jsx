@@ -3,9 +3,9 @@ import {
   Chip,
   Tooltip,
   CircularProgress,
+  Box,
 } from '@mui/material';
-import CircleIcon from '@mui/icons-material/Circle';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { RotateCw } from 'lucide-react';
 import { checkConnection, fetchModels } from '../../services/ollamaService';
 import { useChatStore } from '../../store/chatContext';
 
@@ -79,10 +79,15 @@ export default function ConnectionStatus() {
           checking ? (
             <CircularProgress size={12} sx={{ ml: 0.5 }} />
           ) : (
-            <CircleIcon
+            <Box
+              component="span"
               sx={{
-                fontSize: 10,
-                color: state.isConnected ? '#22c55e' : '#ef4444',
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                bgcolor: state.isConnected ? '#22c55e' : '#ef4444',
+                boxShadow: state.isConnected ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
+                ml: 1,
               }}
             />
           )
@@ -91,7 +96,7 @@ export default function ConnectionStatus() {
         size="small"
         variant="outlined"
         onClick={!checking ? runCheck : undefined}
-        deleteIcon={!checking && !state.isConnected ? <RefreshIcon sx={{ fontSize: 14 }} /> : undefined}
+        deleteIcon={!checking && !state.isConnected ? <RotateCw size={13} style={{ marginRight: 6 }} /> : undefined}
         onDelete={!checking && !state.isConnected ? runCheck : undefined}
         sx={{
           borderColor: checking

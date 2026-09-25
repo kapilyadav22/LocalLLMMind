@@ -3,7 +3,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   Button,
   TextField,
   Box,
@@ -13,18 +12,17 @@ import {
   Slider,
   List,
   ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   alpha,
   useTheme,
-  Divider,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import EditIcon from '@mui/icons-material/Edit';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import {
+  X,
+  Plus,
+  Trash2,
+  Edit3,
+  Bot,
+  Sparkles,
+} from 'lucide-react';
 import { loadCustomPersonas, saveCustomPersona, deleteCustomPersona } from '../../utils/personaStorage';
 import { showCustomAlert, showCustomConfirm } from '../../utils/dialogService';
 import { showToast } from '../../utils/toast';
@@ -173,7 +171,7 @@ export default function PersonaDialog({ open, onClose, onSelectPersona }) {
               justifyContent: 'center',
             }}
           >
-            <SmartToyIcon fontSize="small" />
+            <Bot size={18} />
           </Box>
           <Box>
             <Typography variant="h6" component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.2 }}>
@@ -185,7 +183,7 @@ export default function PersonaDialog({ open, onClose, onSelectPersona }) {
           </Box>
         </Box>
         <IconButton size="small" onClick={onClose}>
-          <CloseIcon fontSize="small" />
+          <X size={18} />
         </IconButton>
       </DialogTitle>
 
@@ -257,7 +255,7 @@ export default function PersonaDialog({ open, onClose, onSelectPersona }) {
               <Button onClick={() => setIsEditing(false)} color="inherit">
                 Cancel
               </Button>
-              <Button onClick={handleSave} variant="contained" disableElevation startIcon={<AutoAwesomeIcon />}>
+              <Button onClick={handleSave} variant="contained" disableElevation startIcon={<Sparkles size={16} />}>
                 Save Persona
               </Button>
             </Box>
@@ -271,7 +269,7 @@ export default function PersonaDialog({ open, onClose, onSelectPersona }) {
               <Button
                 variant="contained"
                 size="small"
-                startIcon={<AddIcon />}
+                startIcon={<Plus size={16} />}
                 onClick={handleStartNew}
                 disableElevation
                 sx={{ borderRadius: 2 }}
@@ -291,14 +289,14 @@ export default function PersonaDialog({ open, onClose, onSelectPersona }) {
                   borderColor: 'divider',
                 }}
               >
-                <SmartToyIcon sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />
+                <Bot size={40} color={theme.palette.text.disabled} style={{ marginBottom: 8 }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.secondary' }}>
                   No Custom Personas Yet
                 </Typography>
                 <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 2 }}>
                   Create dedicated system agents tailored to specific engineering, writing, or analysis workflows.
                 </Typography>
-                <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={handleStartNew}>
+                <Button variant="outlined" size="small" startIcon={<Plus size={16} />} onClick={handleStartNew}>
                   Build Your First Persona
                 </Button>
               </Box>
@@ -356,10 +354,10 @@ export default function PersonaDialog({ open, onClose, onSelectPersona }) {
                       </Box>
                       <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
                         <IconButton size="small" onClick={() => handleStartEdit(persona)} title="Edit Persona">
-                          <EditIcon fontSize="small" />
+                          <Edit3 size={15} />
                         </IconButton>
                         <IconButton size="small" onClick={() => handleDelete(persona)} color="error" title="Delete Persona">
-                          <DeleteOutlinedIcon fontSize="small" />
+                          <Trash2 size={15} />
                         </IconButton>
                         <Button
                           size="small"

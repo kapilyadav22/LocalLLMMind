@@ -12,9 +12,7 @@ import {
   alpha,
   useTheme,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import FolderIcon from '@mui/icons-material/Folder';
-import CheckIcon from '@mui/icons-material/Check';
+import { X, Folder, Check } from 'lucide-react';
 
 const PROJECT_COLORS = [
   { name: 'Indigo', hex: '#6366f1' },
@@ -99,14 +97,14 @@ export default function ProjectDialog({ open, onClose, project = null, onSave })
                 transition: 'all 0.2s ease',
               }}
             >
-              <FolderIcon sx={{ fontSize: 18 }} />
+              <Folder size={18} />
             </Box>
             <Typography variant="h6" component="span" sx={{ fontWeight: 700, fontSize: '1.05rem' }}>
               {isEditing ? 'Edit Project' : 'New Project'}
             </Typography>
           </Box>
           <IconButton size="small" onClick={onClose} aria-label="Close dialog">
-            <CloseIcon fontSize="small" />
+            <X size={18} />
           </IconButton>
         </DialogTitle>
 
@@ -160,7 +158,7 @@ export default function ProjectDialog({ open, onClose, project = null, onSave })
                   }}
                   title={c.name}
                 >
-                  {isSelected && <CheckIcon sx={{ fontSize: 18 }} />}
+                  {isSelected && <Check size={16} />}
                 </Box>
               );
             })}
@@ -179,7 +177,7 @@ export default function ProjectDialog({ open, onClose, project = null, onSave })
               gap: 1.25,
             }}
           >
-            <FolderIcon sx={{ color, fontSize: 20 }} />
+            <Folder size={20} color={color} />
             <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
               {name.trim() || 'Project Preview'}
             </Typography>

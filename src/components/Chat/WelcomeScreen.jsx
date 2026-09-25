@@ -1,218 +1,50 @@
 import { Box, Typography, alpha, useTheme, CircularProgress } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined';
-import SpeedIcon from '@mui/icons-material/Speed';
-import CodeIcon from '@mui/icons-material/Code';
-import SchoolIcon from '@mui/icons-material/School';
-import CloudOffIcon from '@mui/icons-material/CloudOff';
-import TerminalIcon from '@mui/icons-material/Terminal';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import {
+  Code2,
+  Zap,
+  TestTube2,
+  Layers,
+} from 'lucide-react';
 import { useChatStore } from '../../store/chatContext';
 import { APP_NAME } from '../../constants/appConstants';
 import AppLogo from '../common/AppLogo';
 import DeveloperBadge from '../common/DeveloperBadge';
 
 const suggestions = [
-  { icon: <ChatBubbleOutlineIcon />, text: 'Explain quantum computing in simple terms' },
-  { icon: <CodeIcon />, text: 'Write a Python function to sort a list' },
-  { icon: <SchoolIcon />, text: 'Teach me about machine learning' },
-  { icon: <SpeedIcon />, text: 'Help me optimize my React app performance' },
+  {
+    icon: <Zap size={16} />,
+    title: 'Code Review & Optimization',
+    text: 'Review code for performance bottlenecks, memory leaks, and concurrency',
+  },
+  {
+    icon: <TestTube2 size={16} />,
+    title: 'Test Suite Generator',
+    text: 'Generate end-to-end unit tests with edge cases and mocks',
+  },
+  {
+    icon: <Layers size={16} />,
+    title: 'Architecture & Design',
+    text: 'Design a clean, modular API and system architecture',
+  },
+  {
+    icon: <Code2 size={16} />,
+    title: 'Debug & Root Cause',
+    text: 'Analyze stack trace and identify race conditions or edge cases',
+  },
 ];
 
 function ConnectionSetupCard() {
-  const theme = useTheme();
   const { state } = useChatStore();
-
-  // Still checking
-  if (!state.connectionChecked) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 2,
-          p: 4,
-          borderRadius: 4,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: alpha(theme.palette.background.paper, 0.5),
-          maxWidth: 480,
-          width: '100%',
-          animation: 'fadeIn 0.4s ease-out',
-          '@keyframes fadeIn': {
-            from: { opacity: 0 },
-            to: { opacity: 1 },
-          },
-        }}
-      >
-        <CircularProgress size={32} />
-        <Typography variant="body2" color="text.secondary">
-          Connecting to Ollama…
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Connected successfully
-  if (state.isConnected && state.models.length > 0) {
-    return null; // Don't show card — show suggestions instead
-  }
-
-  // Connected but no models
-  if (state.isConnected && state.models.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          p: 3,
-          borderRadius: 4,
-          border: '1px solid',
-          borderColor: alpha(theme.palette.warning.main, 0.3),
-          bgcolor: alpha(theme.palette.warning.main, 0.05),
-          maxWidth: 480,
-          width: '100%',
-          animation: 'fadeInUp 0.5s ease-out',
-          '@keyframes fadeInUp': {
-            from: { opacity: 0, transform: 'translateY(10px)' },
-            to: { opacity: 1, transform: 'translateY(0)' },
-          },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <CheckCircleIcon sx={{ color: 'success.main', fontSize: 22 }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Ollama is running — but no models found
-          </Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-          Pull a model to start chatting. Run one of these in your terminal:
-        </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {['ollama pull llama3.2', 'ollama pull mistral', 'ollama pull gemma3'].map((cmd) => (
-            <Box
-              key={cmd}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.background.default, 0.8),
-                fontFamily: 'monospace',
-                fontSize: '0.85rem',
-                color: 'text.primary',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              <TerminalIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-              {cmd}
-            </Box>
-          ))}
-        </Box>
-      </Box>
-    );
-  }
-
-  // Not connected
+  if (!state.connectionChecked) return <CircularProgress size={24} />;
+  if (state.isConnected) return null;
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2.5,
-        p: 3,
-        borderRadius: 4,
-        border: '1px solid',
-        borderColor: alpha(theme.palette.error.main, 0.25),
-        bgcolor: alpha(theme.palette.error.main, 0.04),
-        maxWidth: 480,
-        width: '100%',
-        animation: 'fadeInUp 0.5s ease-out',
-        '@keyframes fadeInUp': {
-          from: { opacity: 0, transform: 'translateY(10px)' },
-          to: { opacity: 1, transform: 'translateY(0)' },
-        },
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <CloudOffIcon sx={{ color: 'error.main', fontSize: 22 }} />
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'error.main' }}>
-          Cannot connect to Ollama
-        </Typography>
-      </Box>
-
-      {state.connectionError && (
-        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-          {state.connectionError}
-        </Typography>
-      )}
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Quick Setup
-        </Typography>
-
-        {[
-          { step: '1', text: 'Install Ollama', cmd: 'curl -fsSL https://ollama.com/install.sh | sh' },
-          { step: '2', text: 'Start the server', cmd: 'ollama serve' },
-          { step: '3', text: 'Pull a model', cmd: 'ollama pull llama3.2' },
-        ].map((item) => (
-          <Box key={item.step} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-            <Box
-              sx={{
-                width: 22,
-                height: 22,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: alpha(theme.palette.primary.main, 0.15),
-                color: 'primary.main',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                flexShrink: 0,
-                mt: 0.25,
-              }}
-            >
-              {item.step}
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.25 }}>
-                {item.text}
-              </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  px: 1.5,
-                  py: 0.75,
-                  borderRadius: 1.5,
-                  bgcolor: alpha(theme.palette.background.default, 0.8),
-                  fontFamily: 'monospace',
-                  fontSize: '0.78rem',
-                  color: 'text.secondary',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflowX: 'auto',
-                }}
-              >
-                <TerminalIcon sx={{ fontSize: 12, flexShrink: 0 }} />
-                {item.cmd}
-              </Box>
-            </Box>
-          </Box>
-        ))}
-      </Box>
-
+    <Box sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, maxWidth: 460, textAlign: 'left', bgcolor: 'background.paper' }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>Bring your local models online</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 1.5, fontSize: '0.82rem' }}>
+        Start your installed Ollama server using the Start Ollama button above, or configure API keys in Settings.
+      </Typography>
       <Typography variant="caption" color="text.secondary">
-        Trying to connect to: <strong>{state.settings.ollamaUrl}</strong>
-        {' · '}Change this in Settings.
+        Need Ollama? <a href="https://ollama.com/download" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Download Ollama</a>.
       </Typography>
     </Box>
   );
@@ -222,7 +54,7 @@ export default function WelcomeScreen({ onSuggestionClick }) {
   const theme = useTheme();
   const { state } = useChatStore();
 
-  const showSuggestions = state.isConnected && state.models.length > 0;
+  const showSuggestions = (state.isConnected && state.models.length > 0) || Boolean(state.settings?.apiKeyOpenAI || state.settings?.apiKeyAnthropic || state.settings?.apiKeyGemini || state.settings?.apiKeyGrok);
 
   const activeConvo = state.conversations.find((c) => c.id === state.activeConversationId);
   const activeProject = activeConvo?.projectId
@@ -239,16 +71,16 @@ export default function WelcomeScreen({ onSuggestionClick }) {
         height: '100%',
         px: 3,
         textAlign: 'center',
-        animation: 'fadeIn 0.6s ease-out',
+        animation: 'fadeIn 0.4s ease-out',
         '@keyframes fadeIn': {
-          from: { opacity: 0, transform: 'translateY(20px)' },
+          from: { opacity: 0, transform: 'translateY(12px)' },
           to: { opacity: 1, transform: 'translateY(0)' },
         },
       }}
     >
-      {/* Logo / Hero */}
-      <Box sx={{ mb: 3 }}>
-        <AppLogo size={72} glowing={true} showText={false} />
+      {/* Logo */}
+      <Box sx={{ mb: 2 }}>
+        <AppLogo size={52} showText={false} />
       </Box>
 
       {/* Active Project Pill if chat belongs to a project */}
@@ -258,32 +90,29 @@ export default function WelcomeScreen({ onSuggestionClick }) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 1,
-            px: 2,
-            py: 0.65,
+            px: 1.75,
+            py: 0.5,
             mb: 2,
-            borderRadius: 5,
-            bgcolor: alpha(activeProject.color || theme.palette.primary.main, 0.1),
+            borderRadius: 1.5,
+            bgcolor: alpha(activeProject.color || theme.palette.primary.main, 0.08),
             border: '1px solid',
-            borderColor: alpha(activeProject.color || theme.palette.primary.main, 0.3),
-            animation: 'fadeIn 0.3s ease-out',
+            borderColor: alpha(activeProject.color || theme.palette.primary.main, 0.25),
           }}
         >
           <Box
             sx={{
-              width: 8,
-              height: 8,
+              width: 7,
+              height: 7,
               borderRadius: '50%',
-              bgcolor: activeProject.color || '#6366f1',
-              boxShadow: `0 0 8px ${activeProject.color || '#6366f1'}`,
+              bgcolor: activeProject.color || theme.palette.primary.main,
             }}
           />
           <Typography
             variant="caption"
             sx={{
-              fontWeight: 700,
-              fontSize: '0.8rem',
+              fontWeight: 600,
+              fontSize: '0.78rem',
               color: activeProject.color || 'primary.main',
-              letterSpacing: '0.02em',
             }}
           >
             Project: {activeProject.name}
@@ -294,87 +123,78 @@ export default function WelcomeScreen({ onSuggestionClick }) {
       <Typography
         variant="h4"
         sx={{
-          fontWeight: 800,
-          mb: 1,
-          letterSpacing: '-0.02em',
-          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          fontWeight: 700,
+          mb: 0.75,
+          letterSpacing: '-0.03em',
+          color: 'text.primary',
         }}
       >
         {APP_NAME}
       </Typography>
 
       <Typography
-        variant="body1"
+        variant="body2"
         color="text.secondary"
-        sx={{ mb: 4, maxWidth: 500, lineHeight: 1.6 }}
+        sx={{ mb: 3.5, maxWidth: 460, lineHeight: 1.6 }}
       >
         {activeProject
-          ? `Starting a new conversation in "${activeProject.name}". All context and discussions will be organized within this project.`
-          : 'Production-grade local AI workstation. 100% private, offline-ready, and lightning fast.'}
+          ? `New conversation in "${activeProject.name}". Context is preserved within this project.`
+          : 'Ask a question, analyze code, or pick a workflow below.'}
       </Typography>
 
-      {/* Connection status card (shown when not connected / no models) */}
+      {/* Connection status card */}
       <ConnectionSetupCard />
 
-      {/* Suggestion cards (only shown when connected with models) */}
+      {/* Modern Workflow Cards */}
       {showSuggestions && (
-        <>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: 2,
-              maxWidth: 560,
-              width: '100%',
-            }}
-          >
-            {suggestions.map((s, i) => (
-              <Box
-                key={i}
-                onClick={() => onSuggestionClick?.(s.text)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 1.5,
-                  p: 2,
-                  borderRadius: 3,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  bgcolor: alpha(theme.palette.background.paper, 0.5),
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: alpha(theme.palette.primary.main, 0.05),
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.15)}`,
-                  },
-                  animation: `fadeInUp 0.5s ease-out ${i * 0.1}s both`,
-                  '@keyframes fadeInUp': {
-                    from: { opacity: 0, transform: 'translateY(10px)' },
-                    to: { opacity: 1, transform: 'translateY(0)' },
-                  },
-                }}
-              >
-                <Box sx={{ color: 'primary.main', mt: 0.25, flexShrink: 0 }}>{s.icon}</Box>
-                <Typography variant="body2" sx={{ textAlign: 'left', color: 'text.secondary', lineHeight: 1.5 }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            gap: 1.5,
+            maxWidth: 580,
+            width: '100%',
+          }}
+        >
+          {suggestions.map((s, i) => (
+            <Box
+              key={i}
+              onClick={() => onSuggestionClick?.(s.text)}
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 1.5,
+                p: 2,
+                borderRadius: 2.5,
+                border: '1px solid',
+                borderColor: 'divider',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.18s ease',
+                bgcolor: 'background.paper',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: alpha(theme.palette.primary.main, 0.03),
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                },
+              }}
+            >
+              <Box sx={{ color: 'primary.main', mt: 0.25, flexShrink: 0 }}>{s.icon}</Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.84rem', color: 'text.primary', mb: 0.35 }}>
+                  {s.title}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4, display: 'block' }}>
                   {s.text}
                 </Typography>
               </Box>
-            ))}
-          </Box>
-        </>
+            </Box>
+          ))}
+        </Box>
       )}
 
-      <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.25 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <AutoAwesomeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-          <Typography variant="caption" color="text.secondary">
-            Powered by Ollama · Models run 100% locally
-          </Typography>
-        </Box>
+      <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <DeveloperBadge variant="watermark" />
       </Box>
     </Box>

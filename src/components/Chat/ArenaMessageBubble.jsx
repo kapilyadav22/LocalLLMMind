@@ -11,13 +11,15 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
-import SportsMmaIcon from '@mui/icons-material/SportsMma';
-import BoltIcon from '@mui/icons-material/Bolt';
-import TimerIcon from '@mui/icons-material/Timer';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import HandshakeIcon from '@mui/icons-material/Handshake';
+import {
+  Copy,
+  Check,
+  Swords,
+  Zap,
+  Clock,
+  Trophy,
+  Scale,
+} from 'lucide-react';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 import { showToast } from '../../utils/toast';
 
@@ -75,7 +77,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <SportsMmaIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
+          <Swords size={18} color={theme.palette.secondary.main} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'secondary.main', letterSpacing: '0.02em' }}>
             Model Arena — Side-by-Side Dual Evaluation
           </Typography>
@@ -83,7 +85,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
 
         {vote && (
           <Chip
-            icon={vote === 'tie' ? <HandshakeIcon sx={{ fontSize: '14px !important' }} /> : <EmojiEventsIcon sx={{ fontSize: '14px !important' }} />}
+            icon={vote === 'tie' ? <Scale size={13} style={{ marginLeft: 6 }} /> : <Trophy size={13} style={{ marginLeft: 6 }} />}
             label={vote === 'tie' ? 'Result: Tie' : `Winner: ${vote === 'A' ? modelA.name : modelB.name}`}
             size="small"
             color="success"
@@ -162,13 +164,13 @@ export default function ArenaMessageBubble({ msg, onVote }) {
                 ) : modelA.metrics ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Chip
-                      icon={<BoltIcon sx={{ fontSize: '12px !important' }} />}
+                      icon={<Zap size={11} style={{ marginLeft: 5 }} />}
                       label={`${modelA.metrics.tokPerSec} t/s`}
                       size="small"
                       sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
                     />
                     <Chip
-                      icon={<TimerIcon sx={{ fontSize: '12px !important' }} />}
+                      icon={<Clock size={11} style={{ marginLeft: 5 }} />}
                       label={`${modelA.metrics.duration}s`}
                       size="small"
                       sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
@@ -178,7 +180,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
 
                 <Tooltip title={copiedA ? 'Copied!' : 'Copy Model A'}>
                   <IconButton size="small" onClick={() => handleCopy(modelA.content, 'A')} sx={{ p: 0.5 }}>
-                    {copiedA ? <CheckIcon sx={{ fontSize: 16, color: 'success.main' }} /> : <ContentCopyIcon sx={{ fontSize: 16 }} />}
+                    {copiedA ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
                   </IconButton>
                 </Tooltip>
               </Box>
@@ -202,7 +204,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
                 size="small"
                 variant={vote === 'A' ? 'contained' : 'outlined'}
                 color={vote === 'A' ? 'success' : 'primary'}
-                startIcon={<EmojiEventsIcon />}
+                startIcon={<Trophy size={14} />}
                 onClick={() => onVote('A')}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
               >
@@ -280,13 +282,13 @@ export default function ArenaMessageBubble({ msg, onVote }) {
                 ) : modelB.metrics ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Chip
-                      icon={<BoltIcon sx={{ fontSize: '12px !important' }} />}
+                      icon={<Zap size={11} style={{ marginLeft: 5 }} />}
                       label={`${modelB.metrics.tokPerSec} t/s`}
                       size="small"
                       sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
                     />
                     <Chip
-                      icon={<TimerIcon sx={{ fontSize: '12px !important' }} />}
+                      icon={<Clock size={11} style={{ marginLeft: 5 }} />}
                       label={`${modelB.metrics.duration}s`}
                       size="small"
                       sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
@@ -296,7 +298,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
 
                 <Tooltip title={copiedB ? 'Copied!' : 'Copy Model B'}>
                   <IconButton size="small" onClick={() => handleCopy(modelB.content, 'B')} sx={{ p: 0.5 }}>
-                    {copiedB ? <CheckIcon sx={{ fontSize: 16, color: 'success.main' }} /> : <ContentCopyIcon sx={{ fontSize: 16 }} />}
+                    {copiedB ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
                   </IconButton>
                 </Tooltip>
               </Box>
@@ -320,7 +322,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
                 size="small"
                 variant={vote === 'B' ? 'contained' : 'outlined'}
                 color={vote === 'B' ? 'success' : 'secondary'}
-                startIcon={<EmojiEventsIcon />}
+                startIcon={<Trophy size={14} />}
                 onClick={() => onVote('B')}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
               >
@@ -337,7 +339,7 @@ export default function ArenaMessageBubble({ msg, onVote }) {
           size="small"
           variant={vote === 'tie' ? 'contained' : 'text'}
           color="inherit"
-          startIcon={<HandshakeIcon sx={{ fontSize: 16 }} />}
+          startIcon={<Scale size={14} />}
           onClick={() => onVote('tie')}
           sx={{
             textTransform: 'none',

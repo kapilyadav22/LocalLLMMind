@@ -11,7 +11,7 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { Sparkles } from 'lucide-react';
 
 export default function SlashCommandPopover({
   open,
@@ -66,7 +66,7 @@ export default function SlashCommandPopover({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AutoAwesomeIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+          <Sparkles size={14} color={theme.palette.primary.main} />
           <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.68rem', color: 'primary.main' }}>
             Slash Commands ({prompts.length})
           </Typography>

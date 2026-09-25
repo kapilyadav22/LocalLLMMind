@@ -22,17 +22,19 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
-import AddIcon from '@mui/icons-material/Add';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import DownloadIcon from '@mui/icons-material/Download';
-import UploadIcon from '@mui/icons-material/Upload';
-import CheckIcon from '@mui/icons-material/Check';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import {
+  X,
+  Search,
+  Plus,
+  Copy,
+  Edit3,
+  Trash2,
+  Download,
+  Upload,
+  Check,
+  Play,
+  Sparkles,
+} from 'lucide-react';
 import { PROMPT_CATEGORIES } from '../../constants/promptLibrary';
 import {
   addCustomPrompt,
@@ -205,7 +207,7 @@ export default function PromptLibraryDialog({
                 justifyContent: 'center',
               }}
             >
-              <AutoAwesomeIcon fontSize="small" />
+              <Sparkles size={18} />
             </Box>
             <Box>
               <Typography variant="h6" component="span" sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2 }}>
@@ -218,7 +220,7 @@ export default function PromptLibraryDialog({
           </Box>
 
           <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
-            <CloseIcon fontSize="small" />
+            <X size={18} />
           </IconButton>
         </DialogTitle>
 
@@ -233,7 +235,7 @@ export default function PromptLibraryDialog({
               input: {
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Search size={16} color={theme.palette.text.secondary} />
                   </InputAdornment>
                 ),
               },
@@ -244,7 +246,7 @@ export default function PromptLibraryDialog({
           <Button
             variant="contained"
             size="small"
-            startIcon={<AddIcon />}
+            startIcon={<Plus size={15} />}
             onClick={handleOpenCreate}
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
@@ -253,13 +255,13 @@ export default function PromptLibraryDialog({
 
           <Tooltip title="Export custom prompts as JSON">
             <IconButton size="small" onClick={exportPromptsAsJson} sx={{ color: 'text.secondary' }}>
-              <DownloadIcon fontSize="small" />
+              <Download size={16} />
             </IconButton>
           </Tooltip>
 
           <Tooltip title="Import prompts JSON">
             <IconButton component="label" size="small" sx={{ color: 'text.secondary' }}>
-              <UploadIcon fontSize="small" />
+              <Upload size={16} />
               <input type="file" hidden accept=".json" onChange={handleImportFile} />
             </IconButton>
           </Tooltip>
@@ -369,7 +371,7 @@ export default function PromptLibraryDialog({
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
                         <Tooltip title="Copy prompt template">
                           <IconButton size="small" onClick={() => handleCopyTemplate(p)} sx={{ color: 'text.secondary' }}>
-                            {copiedId === p.id ? <CheckIcon fontSize="small" color="success" /> : <ContentCopyIcon fontSize="small" />}
+                            {copiedId === p.id ? <Check size={16} color={theme.palette.success.main} /> : <Copy size={16} />}
                           </IconButton>
                         </Tooltip>
 
@@ -377,12 +379,12 @@ export default function PromptLibraryDialog({
                           <>
                             <Tooltip title="Edit prompt">
                               <IconButton size="small" onClick={() => handleOpenEdit(p)} sx={{ color: 'text.secondary' }}>
-                                <EditIcon fontSize="small" />
+                                <Edit3 size={15} />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Delete prompt">
                               <IconButton size="small" onClick={() => handleDeletePrompt(p.id, p.title)} sx={{ color: 'error.main' }}>
-                                <DeleteOutlineIcon fontSize="small" />
+                                <Trash2 size={15} />
                               </IconButton>
                             </Tooltip>
                           </>
@@ -392,7 +394,7 @@ export default function PromptLibraryDialog({
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={<PlayArrowIcon sx={{ fontSize: 16 }} />}
+                        startIcon={<Play size={14} />}
                         onClick={() => {
                           onSelectPrompt(p);
                           onClose();

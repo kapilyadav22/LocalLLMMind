@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import {
   Box,
   Drawer,
@@ -13,35 +13,59 @@ import {
   Button,
   LinearProgress,
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import SettingsIcon from '@mui/icons-material/Settings';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import AddIcon from '@mui/icons-material/Add';
+import {
+  Code2,
+  MessageSquare,
+  Menu,
+  PanelLeft,
+  PanelLeftClose,
+  AlertTriangle,
+  Settings as SettingsIconLucide,
+  RotateCw,
+  Plus,
+} from 'lucide-react';
+import OllamaStartButton from '../common/OllamaStartButton';
 import Sidebar from './Sidebar';
 import ChatView from '../Chat/ChatView';
-import SettingsDialog from '../Settings/SettingsDialog';
-import ModelManagerDialog from '../Settings/ModelManagerDialog';
-import GlobalSearchDialog from './GlobalSearchDialog';
-import KeyboardShortcutsDialog from '../common/KeyboardShortcutsDialog';
 import CustomAlertDialog from '../common/CustomAlertDialog';
 import AppLogo from '../common/AppLogo';
 import { useChatStore } from '../../store/chatContext';
 import { checkConnection, fetchModels } from '../../services/ollamaService';
 import { DEFAULT_SHORTCUTS } from '../../constants/appConstants';
+import { loadSidebarOpen, saveSidebarOpen } from '../../utils/storage';
 
+const CodeWorkspace = lazy(() => import('../Code/CodeWorkspace'));
+const SettingsDialog = lazy(() => import('../Settings/SettingsDialog'));
+const ModelManagerDialog = lazy(() => import('../Settings/ModelManagerDialog'));
+const GlobalSearchDialog = lazy(() => import('./GlobalSearchDialog'));
+const KeyboardShortcutsDialog = lazy(() => import('../common/KeyboardShortcutsDialog'));
+const AboutMeModal = lazy(() => import('../About/AboutMeModal'));
 const SIDEBAR_WIDTH = 280;
 
 export default function AppLayout({ themeMode, onThemeToggle }) {
+  const [mode, setMode] = useState('chat');
+  const [codeOpened, setCodeOpened] = useState(false);
+  const changeMode = (next) => { setMode(next); if (next === 'code') setCodeOpened(true); };
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 900) return false;
+    return loadSidebarOpen();
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [modelManagerOpen, setModelManagerOpen] = useState(false);
+  const [aboutMeOpen, setAboutMeOpen] = useState(false);
   const { state, dispatch } = useChatStore();
+
+  // Listen for global open-about-me event (triggered from "Crafted by" watermark or badges)
+  useEffect(() => {
+    const handleOpenAboutMe = () => setAboutMeOpen(true);
+    window.addEventListener('open-about-me', handleOpenAboutMe);
+    return () => window.removeEventListener('open-about-me', handleOpenAboutMe);
+  }, []);
 
   const handleOpenSettings = (tabIndex = 0) => {
     setSettingsInitialTab(typeof tabIndex === 'number' ? tabIndex : 0);
@@ -152,10 +176,11 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           const action = s.actionType || s.id;
           switch (action) {
             case 'new_chat':
+              setMode('chat');
               dispatch({ type: 'NEW_CONVERSATION' });
               break;
             case 'toggle_sidebar':
-              setSidebarOpen((prev) => !prev);
+              handleToggleSidebar();
               break;
             case 'open_settings':
               setSettingsOpen((prev) => !prev);
@@ -208,17 +233,59 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.shortcuts, state.isStreaming, settingsOpen, shortcutsOpen, globalSearchOpen, modelManagerOpen, dispatch, onThemeToggle]);
 
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('localllmmind_sidebar_width');
+    return saved ? Math.max(200, Math.min(500, parseInt(saved, 10))) : SIDEBAR_WIDTH;
+  });
+  const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(SIDEBAR_WIDTH);
+
+  const handleSidebarDragStart = (e) => {
+    e.preventDefault();
+    setIsDraggingSidebar(true);
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = sidebarWidth;
+
+    function handleMouseMove(moveEvent) {
+      const delta = moveEvent.clientX - dragStartX.current;
+      const nextWidth = Math.max(200, Math.min(500, dragStartWidth.current + delta));
+      setSidebarWidth(nextWidth);
+    }
+
+    function handleMouseUp() {
+      setIsDraggingSidebar(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      setSidebarWidth((w) => {
+        localStorage.setItem('localllmmind_sidebar_width', String(Math.round(w)));
+        return w;
+      });
+    }
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
   const handleToggleSidebar = () => {
-    setSidebarOpen((prev) => !prev);
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      if (!isMobile) saveSidebarOpen(next);
+      return next;
+    });
   };
 
   const sidebarContent = (
     <Sidebar
+      onNavigateChat={() => setMode('chat')}
       onOpenSettings={handleOpenSettings}
       onOpenShortcuts={() => setShortcutsOpen(true)}
       onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
       onOpenModelManager={() => setModelManagerOpen(true)}
+      onOpenAboutMe={() => setAboutMeOpen(true)}
       onCloseMobile={() => isMobile && setSidebarOpen(false)}
+      onToggleSidebar={handleToggleSidebar}
+      isMobile={isMobile}
     />
   );
 
@@ -234,7 +301,7 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           slotProps={{
             paper: {
               sx: {
-                width: SIDEBAR_WIDTH,
+                width: sidebarWidth,
                 bgcolor: 'background.paper',
                 borderRight: '1px solid',
                 borderColor: 'divider',
@@ -245,20 +312,40 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           {sidebarContent}
         </Drawer>
       ) : (
-        /* Desktop sidebar */
+        /* Desktop sidebar (Draggable) */
         <Box
           sx={{
-            width: sidebarOpen ? SIDEBAR_WIDTH : 0,
+            width: sidebarOpen ? sidebarWidth : 0,
             flexShrink: 0,
-            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: isDraggingSidebar ? 'none' : 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             overflow: 'hidden',
             borderRight: sidebarOpen ? '1px solid' : 'none',
             borderColor: 'divider',
+            position: 'relative',
           }}
         >
-          <Box sx={{ width: SIDEBAR_WIDTH, height: '100%' }}>
+          <Box sx={{ width: sidebarWidth, height: '100%' }}>
             {sidebarContent}
           </Box>
+          {sidebarOpen && (
+            <Box
+              onMouseDown={handleSidebarDragStart}
+              title="Drag to resize sidebar"
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 5,
+                height: '100%',
+                cursor: 'col-resize',
+                zIndex: 20,
+                transition: 'background-color 0.15s',
+                '&:hover, &:active': {
+                  bgcolor: 'primary.main',
+                },
+              }}
+            />
+          )}
         </Box>
       )}
 
@@ -273,6 +360,71 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           position: 'relative',
         }}
       >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 2,
+            py: 1,
+            borderBottom: 1,
+            borderColor: 'divider',
+            flexShrink: 0,
+          }}
+        >
+          {!isMobile && (
+            <Tooltip title={sidebarOpen ? 'Hide sidebar (Cmd+B)' : 'Show sidebar (Cmd+B)'}>
+              <IconButton
+                size="small"
+                onClick={handleToggleSidebar}
+                aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+                sx={{
+                  color: sidebarOpen ? 'text.secondary' : 'primary.main',
+                  bgcolor: sidebarOpen ? 'transparent' : alpha(theme.palette.primary.main, 0.08),
+                  border: '1px solid',
+                  borderColor: sidebarOpen ? 'divider' : alpha(theme.palette.primary.main, 0.25),
+                  borderRadius: 1.5,
+                  mr: 0.5,
+                  p: '6px',
+                  '&:hover': {
+                    color: 'text.primary',
+                    bgcolor: alpha(theme.palette.text.primary, 0.06),
+                  },
+                }}
+              >
+                {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeft size={16} />}
+              </IconButton>
+            </Tooltip>
+          )}
+          <Button
+            size="small"
+            variant={mode === 'chat' ? 'contained' : 'text'}
+            startIcon={<MessageSquare size={14} />}
+            onClick={() => changeMode('chat')}
+            sx={{
+              fontWeight: mode === 'chat' ? 600 : 500,
+              fontSize: '0.8rem',
+              py: 0.5,
+              px: 1.25,
+            }}
+          >
+            Chat
+          </Button>
+          <Button
+            size="small"
+            variant={mode === 'code' ? 'contained' : 'text'}
+            startIcon={<Code2 size={14} />}
+            onClick={() => changeMode('code')}
+            sx={{
+              fontWeight: mode === 'code' ? 600 : 500,
+              fontSize: '0.8rem',
+              py: 0.5,
+              px: 1.25,
+            }}
+          >
+            Code
+          </Button>
+        </Box>
         {/* Loading bar — shown before first connection check completes */}
         {!state.connectionChecked && (
           <LinearProgress
@@ -282,7 +434,7 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
               left: 0,
               right: 0,
               zIndex: 20,
-              height: 3,
+              height: 2,
             }}
           />
         )}
@@ -295,11 +447,12 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 1.5,
+              flexWrap: 'wrap',
               px: 2,
               py: 1,
-              bgcolor: alpha(theme.palette.error.main, 0.1),
+              bgcolor: alpha(theme.palette.error.main, 0.08),
               borderBottom: '1px solid',
-              borderColor: alpha(theme.palette.error.main, 0.2),
+              borderColor: alpha(theme.palette.error.main, 0.15),
               animation: 'slideDown 0.3s ease-out',
               '@keyframes slideDown': {
                 from: { opacity: 0, transform: 'translateY(-100%)' },
@@ -307,23 +460,23 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
               },
             }}
           >
-            <WarningAmberIcon sx={{ fontSize: 18, color: 'error.main' }} />
+            <OllamaStartButton />
+            <AlertTriangle size={16} color={theme.palette.error.main} />
             <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 500, fontSize: '0.82rem' }}>
               {state.connectionError || `Cannot connect to Ollama at ${state.settings.ollamaUrl}`}
             </Typography>
             <Button
               size="small"
-              startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
+              startIcon={<RotateCw size={12} />}
               onClick={handleRetryConnection}
               sx={{
                 ml: 1,
                 color: 'error.main',
                 borderColor: alpha(theme.palette.error.main, 0.3),
                 fontSize: '0.75rem',
-                textTransform: 'none',
                 minWidth: 0,
-                px: 1.5,
-                py: 0.25,
+                px: 1.2,
+                py: 0.2,
               }}
               variant="outlined"
             >
@@ -331,16 +484,15 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
             </Button>
             <Button
               size="small"
-              startIcon={<SettingsIcon sx={{ fontSize: 14 }} />}
+              startIcon={<SettingsIconLucide size={12} />}
               onClick={() => setSettingsOpen(true)}
               sx={{
                 color: 'error.main',
                 borderColor: alpha(theme.palette.error.main, 0.3),
                 fontSize: '0.75rem',
-                textTransform: 'none',
                 minWidth: 0,
-                px: 1.5,
-                py: 0.25,
+                px: 1.2,
+                py: 0.2,
               }}
               variant="outlined"
             >
@@ -359,32 +511,28 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
               gap: 1.5,
               px: 2,
               py: 1,
-              bgcolor: alpha(theme.palette.warning.main, 0.1),
+              bgcolor: alpha(theme.palette.warning.main, 0.08),
               borderBottom: '1px solid',
-              borderColor: alpha(theme.palette.warning.main, 0.2),
+              borderColor: alpha(theme.palette.warning.main, 0.15),
             }}
           >
-            <WarningAmberIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+            <AlertTriangle size={16} color={theme.palette.warning.main} />
             <Typography variant="body2" sx={{ color: 'warning.main', fontWeight: 500, fontSize: '0.82rem' }}>
-              No models available. Pull a model first:
-              <Box component="code" sx={{ ml: 0.5, px: 0.75, py: 0.25, borderRadius: 1, bgcolor: alpha(theme.palette.warning.main, 0.1), fontSize: '0.8rem' }}>
-                ollama pull llama3.2
-              </Box>
+              No models available. Pull a model to get started.
             </Typography>
             <Button
               size="small"
-              startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
-              onClick={handleRetryConnection}
+              startIcon={<RotateCw size={12} />}
+              onClick={() => setModelManagerOpen(true)}
               sx={{
                 ml: 1,
                 color: 'warning.main',
                 borderColor: alpha(theme.palette.warning.main, 0.3),
                 fontSize: '0.75rem',
-                textTransform: 'none',
               }}
               variant="outlined"
             >
-              Refresh
+              Pull a model
             </Button>
           </Box>
         )}
@@ -400,14 +548,13 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
               py: 0.75,
               borderBottom: '1px solid',
               borderColor: 'divider',
-              bgcolor: alpha(theme.palette.background.paper, 0.75),
-              backdropFilter: 'blur(12px)',
+              bgcolor: 'background.paper',
               zIndex: 15,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton size="small" onClick={handleToggleSidebar} edge="start">
-                <MenuIcon fontSize="small" />
+              <IconButton size="small" onClick={handleToggleSidebar} edge="start" sx={{ p: '6px' }}>
+                <Menu size={18} />
               </IconButton>
               <AppLogo size={24} fontSize="0.95rem" />
             </Box>
@@ -418,90 +565,82 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
                   onClick={() => dispatch({ type: 'NEW_CONVERSATION' })}
                   sx={{
                     color: 'primary.main',
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) },
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    p: '6px',
+                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.15) },
                   }}
                 >
-                  <AddIcon fontSize="small" />
+                  <Plus size={16} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Settings">
-                <IconButton size="small" onClick={() => setSettingsOpen(true)} sx={{ color: 'text.secondary' }}>
-                  <SettingsIcon fontSize="small" />
+                <IconButton size="small" onClick={() => setSettingsOpen(true)} sx={{ color: 'text.secondary', p: '6px' }}>
+                  <SettingsIconLucide size={16} />
                 </IconButton>
               </Tooltip>
             </Box>
           </Box>
         )}
 
-        {/* Desktop floating menu toggle when sidebar is collapsed */}
-        {!isMobile && !sidebarOpen && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: state.connectionChecked && !state.isConnected ? 52 : 12,
-              left: 12,
-              zIndex: 10,
-              transition: 'top 0.3s ease',
-            }}
-          >
-            <Tooltip title="Expand sidebar (Cmd+B)">
-              <IconButton
-                onClick={handleToggleSidebar}
-                sx={{
-                  bgcolor: alpha(theme.palette.background.paper, 0.8),
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  '&:hover': {
-                    bgcolor: alpha(theme.palette.background.paper, 0.95),
-                  },
-                }}
-              >
-                <MenuIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        )}
-
-        <ChatView />
+        <Box sx={{ display: mode === 'chat' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
+          <ChatView onOpenSettings={(tabIdx = 1) => { setSettingsInitialTab(tabIdx); setSettingsOpen(true); }} />
+        </Box>
+        {codeOpened && <Box sx={{ display: mode === 'code' ? 'flex' : 'none', flex: 1, minHeight: 0 }}>
+          <Suspense fallback={<LinearProgress sx={{ width: '100%' }} />}><CodeWorkspace onModels={() => setModelManagerOpen(true)} /></Suspense>
+        </Box>}
       </Box>
 
-      {/* Settings dialog */}
-      <SettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        themeMode={themeMode}
-        onThemeToggle={onThemeToggle}
-        initialTab={settingsInitialTab}
-      />
+      {/* Lazy Loaded Dialogs in Suspense */}
+      <Suspense fallback={null}>
+        {settingsOpen && (
+          <SettingsDialog
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            themeMode={themeMode}
+            onThemeToggle={onThemeToggle}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={handleToggleSidebar}
+            initialTab={settingsInitialTab}
+          />
+        )}
 
-      {/* Keyboard Shortcuts Dialog */}
-      <KeyboardShortcutsDialog
-        open={shortcutsOpen}
-        onClose={() => setShortcutsOpen(false)}
-      />
+        {shortcutsOpen && (
+          <KeyboardShortcutsDialog
+            open={shortcutsOpen}
+            onClose={() => setShortcutsOpen(false)}
+          />
+        )}
 
-      {/* Global Conversation Search Dialog */}
-      <GlobalSearchDialog
-        open={globalSearchOpen}
-        onClose={() => setGlobalSearchOpen(false)}
-      />
+        {globalSearchOpen && (
+          <GlobalSearchDialog
+            open={globalSearchOpen}
+            onClose={() => setGlobalSearchOpen(false)}
+          />
+        )}
 
-      {/* Ollama Model Manager Dialog */}
-      <ModelManagerDialog
-        open={modelManagerOpen}
-        onClose={() => setModelManagerOpen(false)}
-        ollamaUrl={state.settings.ollamaUrl}
-        onModelsChanged={async () => {
-          try {
-            const models = await fetchModels(state.settings.ollamaUrl);
-            dispatch({ type: 'SET_MODELS', payload: models });
-          } catch (err) {
-            console.error('[AppLayout] Failed to refresh models:', err);
-          }
-        }}
-      />
+        {modelManagerOpen && (
+          <ModelManagerDialog
+            open={modelManagerOpen}
+            onClose={() => setModelManagerOpen(false)}
+            ollamaUrl={state.settings.ollamaUrl}
+            onModelsChanged={async () => {
+              try {
+                 const models = await fetchModels(state.settings.ollamaUrl);
+                dispatch({ type: 'SET_MODELS', payload: models });
+              } catch (err) {
+                console.error('[AppLayout] Failed to refresh models:', err);
+              }
+            }}
+          />
+        )}
+
+        {aboutMeOpen && (
+          <AboutMeModal
+            open={aboutMeOpen}
+            onClose={() => setAboutMeOpen(false)}
+          />
+        )}
+      </Suspense>
 
       {/* Snackbar notifications */}
       <Snackbar

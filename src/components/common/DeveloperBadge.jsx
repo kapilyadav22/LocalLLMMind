@@ -1,43 +1,72 @@
+import { memo } from 'react';
 import { Box, Typography, Chip, Tooltip, alpha, useTheme } from '@mui/material';
-import CodeIcon from '@mui/icons-material/Code';
-import VerifiedIcon from '@mui/icons-material/Verified';
-import PersonIcon from '@mui/icons-material/Person';
-import { DEVELOPER_NAME, DEVELOPER_TITLE, APP_NAME, APP_VERSION } from '../../constants/appConstants';
+import { Code2, CheckCircle2, User, Sparkles } from 'lucide-react';
+import {
+  DEVELOPER_NAME,
+  DEVELOPER_TITLE,
+  DEVELOPER_HANDLE,
+  APP_NAME,
+  APP_VERSION,
+} from '../../constants/appConstants';
 
-export default function DeveloperBadge({ variant = 'watermark', sx = {} }) {
+function DeveloperBadgeComponent({ variant = 'watermark', onClick, sx = {} }) {
   const theme = useTheme();
+
+  const handleClick = (e) => {
+    e?.stopPropagation?.();
+    if (onClick) {
+      onClick(e);
+    } else {
+      window.dispatchEvent(new CustomEvent('open-about-me'));
+    }
+  };
 
   if (variant === 'watermark') {
     return (
-      <Tooltip title={`Developed & Maintained by ${DEVELOPER_NAME} · v${APP_VERSION}`} arrow>
+      <Tooltip title={`Crafted by ${DEVELOPER_NAME} · Click to view profile & about me`} arrow>
         <Box
+          onClick={handleClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick(e);
+            }
+          }}
           sx={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 0.75,
-            px: 1.25,
-            py: 0.4,
+            px: 1.35,
+            py: 0.45,
             borderRadius: 2,
-            bgcolor: alpha(theme.palette.background.paper, 0.6),
+            bgcolor: 'background.paper',
             border: '1px solid',
             borderColor: 'divider',
-            backdropFilter: 'blur(8px)',
-            cursor: 'default',
+            cursor: 'pointer',
             userSelect: 'none',
-            transition: 'all 0.2s ease',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
-              borderColor: alpha(theme.palette.primary.main, 0.4),
-              bgcolor: alpha(theme.palette.primary.main, 0.05),
+              borderColor: 'primary.main',
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
               transform: 'translateY(-1px)',
+              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`,
+              '& .dev-name': {
+                color: 'primary.main',
+              },
+            },
+            '&:active': {
+              transform: 'scale(0.98)',
             },
             ...sx,
           }}
         >
-          <CodeIcon sx={{ fontSize: 13, color: 'primary.main' }} />
+          <Code2 size={13} color={theme.palette.primary.main} />
           <Typography
             variant="caption"
             sx={{
-              fontSize: '0.72rem',
+              fontSize: '0.73rem',
               fontWeight: 600,
               letterSpacing: '0.02em',
               color: 'text.secondary',
@@ -46,12 +75,11 @@ export default function DeveloperBadge({ variant = 'watermark', sx = {} }) {
             Crafted by{' '}
             <Box
               component="span"
+              className="dev-name"
               sx={{
                 color: 'text.primary',
                 fontWeight: 700,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                transition: 'color 0.15s ease',
               }}
             >
               {DEVELOPER_NAME}
@@ -65,46 +93,37 @@ export default function DeveloperBadge({ variant = 'watermark', sx = {} }) {
   if (variant === 'card') {
     return (
       <Box
+        onClick={handleClick}
         sx={{
           p: 2.5,
-          borderRadius: 3,
+          borderRadius: 2.5,
           border: '1px solid',
           borderColor: 'divider',
-          bgcolor: alpha(theme.palette.background.paper, 0.5),
-          position: 'relative',
-          overflow: 'hidden',
+          bgcolor: 'background.paper',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            borderColor: 'primary.main',
+            boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.12)}`,
+            transform: 'translateY(-2px)',
+          },
           ...sx,
         }}
       >
-        {/* Background gradient blur */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -20,
-            right: -20,
-            width: 100,
-            height: 100,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.15)} 0%, transparent 70%)`,
-            pointerEvents: 'none',
-          }}
-        />
-
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
           {/* Avatar with Initials */}
           <Box
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
+              width: 44,
+              height: 44,
+              borderRadius: 2,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              bgcolor: 'primary.main',
               color: '#fff',
               fontWeight: 800,
-              fontSize: '1.1rem',
-              boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.35)}`,
+              fontSize: '1rem',
             }}
           >
             KY
@@ -115,7 +134,7 @@ export default function DeveloperBadge({ variant = 'watermark', sx = {} }) {
               <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                 {DEVELOPER_NAME}
               </Typography>
-              <VerifiedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+              <CheckCircle2 size={16} color={theme.palette.primary.main} />
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
               {DEVELOPER_TITLE}
@@ -137,22 +156,14 @@ export default function DeveloperBadge({ variant = 'watermark', sx = {} }) {
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.82rem', lineHeight: 1.6, mb: 2 }}>
-          {APP_NAME} is designed for private, ultra-fast, and distraction-free interaction with local Ollama models, featuring token throughput metrics, reasoning model support, and seamless chat backups.
+          {APP_NAME} is engineered for private, ultra-fast, and distraction-free interaction with local Ollama models and cloud frontier models.
         </Typography>
 
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-          {['React 19', 'Vite', 'Material UI 9', 'Ollama API', 'DeepSeek-R1 Ready'].map((tech) => (
-            <Chip
-              key={tech}
-              label={tech}
-              size="small"
-              sx={{
-                height: 20,
-                fontSize: '0.68rem',
-                bgcolor: alpha(theme.palette.text.primary, 0.04),
-              }}
-            />
-          ))}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600 }}>
+            Click to view profile & social links →
+          </Typography>
+          <Sparkles size={14} color={theme.palette.primary.main} />
         </Box>
       </Box>
     );
@@ -160,11 +171,24 @@ export default function DeveloperBadge({ variant = 'watermark', sx = {} }) {
 
   // Default compact
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, ...sx }}>
-      <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+    <Box
+      onClick={handleClick}
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        cursor: 'pointer',
+        '&:hover': { color: 'primary.main' },
+        ...sx,
+      }}
+    >
+      <User size={14} color={theme.palette.text.secondary} />
       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
         {DEVELOPER_NAME}
       </Typography>
     </Box>
   );
 }
+
+const DeveloperBadge = memo(DeveloperBadgeComponent);
+export default DeveloperBadge;

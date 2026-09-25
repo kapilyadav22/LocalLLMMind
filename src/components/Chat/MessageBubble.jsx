@@ -1,21 +1,23 @@
 import { useState, memo } from 'react';
 import { Box, IconButton, Tooltip, Typography, Dialog, Chip, useTheme, alpha } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import VolumeOffIcon from '@mui/icons-material/VolumeOff';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import EditIcon from '@mui/icons-material/Edit';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import CloseIcon from '@mui/icons-material/Close';
-import ReplyIcon from '@mui/icons-material/Reply';
-import CallSplitIcon from '@mui/icons-material/CallSplit';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import LanguageIcon from '@mui/icons-material/Language';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import {
+  User,
+  Bot,
+  Copy,
+  Check,
+  Volume2,
+  VolumeX,
+  RotateCw,
+  Edit3,
+  ZoomIn,
+  X,
+  CornerUpLeft,
+  GitFork,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  ExternalLink,
+} from 'lucide-react';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 
 const MessageBubble = memo(function MessageBubble({
@@ -79,24 +81,27 @@ const MessageBubble = memo(function MessageBubble({
       {/* Avatar */}
       <Box
         sx={{
-          width: 34,
-          height: 34,
+          width: 32,
+          height: 32,
           borderRadius: 2,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          mt: 0.5,
-          background: isUser
-            ? `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`
-            : `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+          mt: 0.25,
+          bgcolor: isUser
+            ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+            : alpha(theme.palette.primary.main, 0.12),
+          color: isUser
+            ? 'text.primary'
+            : 'primary.main',
+          border: '1px solid',
+          borderColor: isUser
+            ? 'divider'
+            : alpha(theme.palette.primary.main, 0.25),
         }}
       >
-        {isUser ? (
-          <PersonIcon sx={{ fontSize: 18, color: '#fff' }} />
-        ) : (
-          <SmartToyIcon sx={{ fontSize: 18, color: '#fff' }} />
-        )}
+        {isUser ? <User size={16} /> : <Bot size={16} />}
       </Box>
 
       {/* Content */}
@@ -172,7 +177,7 @@ const MessageBubble = memo(function MessageBubble({
                             color: '#fff',
                           }}
                         >
-                          <ZoomInIcon sx={{ fontSize: 26 }} />
+                          <ZoomIn size={22} />
                         </Box>
                       </Box>
                     );
@@ -192,12 +197,12 @@ const MessageBubble = memo(function MessageBubble({
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-                    <LanguageIcon sx={{ fontSize: 15, color: '#00e5ff' }} />
+                    <Globe size={14} color={theme.palette.primary.main} />
                     <Typography
                       variant="caption"
                       sx={{
-                        fontWeight: 700,
-                        color: '#00e5ff',
+                        fontWeight: 600,
+                        color: 'primary.main',
                         letterSpacing: '0.04em',
                         fontSize: '0.72rem',
                         textTransform: 'uppercase',
@@ -217,7 +222,7 @@ const MessageBubble = memo(function MessageBubble({
                         clickable
                         size="small"
                         label={`[${i + 1}] ${source.title}`}
-                        icon={<OpenInNewIcon sx={{ fontSize: '12px !important' }} />}
+                        icon={<ExternalLink size={11} />}
                         sx={{
                           maxWidth: 240,
                           fontSize: '0.72rem',
@@ -251,12 +256,12 @@ const MessageBubble = memo(function MessageBubble({
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-                    <LanguageIcon sx={{ fontSize: 15, color: '#00e5ff' }} />
+                    <Globe size={14} color={theme.palette.primary.main} />
                     <Typography
                       variant="caption"
                       sx={{
-                        fontWeight: 700,
-                        color: '#00e5ff',
+                        fontWeight: 600,
+                        color: 'primary.main',
                         letterSpacing: '0.04em',
                         fontSize: '0.72rem',
                         textTransform: 'uppercase',
@@ -276,7 +281,7 @@ const MessageBubble = memo(function MessageBubble({
                         clickable
                         size="small"
                         label={`[${i + 1}] ${source.title}`}
-                        icon={<OpenInNewIcon sx={{ fontSize: '12px !important' }} />}
+                        icon={<ExternalLink size={11} />}
                         sx={{
                           maxWidth: 240,
                           fontSize: '0.72rem',
@@ -396,14 +401,14 @@ const MessageBubble = memo(function MessageBubble({
                     }
                     sx={{ p: 0.25 }}
                   >
-                    <ChevronLeftIcon sx={{ fontSize: 16 }} />
+                    <ChevronLeft size={14} />
                   </IconButton>
                 </span>
               </Tooltip>
               <Typography
                 variant="caption"
                 sx={{
-                  fontWeight: 700,
+                  fontWeight: 600,
                   fontSize: '0.72rem',
                   px: 0.5,
                   color: 'text.secondary',
@@ -428,7 +433,7 @@ const MessageBubble = memo(function MessageBubble({
                     }
                     sx={{ p: 0.25 }}
                   >
-                    <ChevronRightIcon sx={{ fontSize: 16 }} />
+                    <ChevronRight size={14} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -441,14 +446,10 @@ const MessageBubble = memo(function MessageBubble({
               onClick={handleCopy}
               sx={{
                 color: 'text.secondary',
-                '&:hover': { color: 'primary.main' },
+                '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) },
               }}
             >
-              {copied ? (
-                <CheckIcon sx={{ fontSize: 16 }} />
-              ) : (
-                <ContentCopyIcon sx={{ fontSize: 16 }} />
-              )}
+              {copied ? <Check size={14} /> : <Copy size={14} />}
             </IconButton>
           </Tooltip>
 
@@ -460,10 +461,10 @@ const MessageBubble = memo(function MessageBubble({
                 onClick={() => onReply(message)}
                 sx={{
                   color: 'text.secondary',
-                  '&:hover': { color: 'primary.main' },
+                  '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) },
                 }}
               >
-                <ReplyIcon sx={{ fontSize: 16 }} />
+                <CornerUpLeft size={14} />
               </IconButton>
             </Tooltip>
           )}
@@ -476,10 +477,10 @@ const MessageBubble = memo(function MessageBubble({
                 onClick={() => onFork(index)}
                 sx={{
                   color: 'text.secondary',
-                  '&:hover': { color: 'primary.main' },
+                  '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) },
                 }}
               >
-                <CallSplitIcon sx={{ fontSize: 16 }} />
+                <GitFork size={14} />
               </IconButton>
             </Tooltip>
           )}
@@ -492,10 +493,10 @@ const MessageBubble = memo(function MessageBubble({
                 onClick={() => onEdit(index, message.content)}
                 sx={{
                   color: 'text.secondary',
-                  '&:hover': { color: 'primary.main' },
+                  '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) },
                 }}
               >
-                <EditIcon sx={{ fontSize: 16 }} />
+                <Edit3 size={14} />
               </IconButton>
             </Tooltip>
           )}
@@ -508,21 +509,10 @@ const MessageBubble = memo(function MessageBubble({
                 onClick={() => onToggleSpeak(index, message.content)}
                 sx={{
                   color: isSpeaking ? 'primary.main' : 'text.secondary',
-                  '&:hover': { color: 'primary.main' },
-                  ...(isSpeaking && {
-                    animation: 'soundwave 1.2s ease-in-out infinite alternate',
-                    '@keyframes soundwave': {
-                      '0%': { transform: 'scale(1)' },
-                      '100%': { transform: 'scale(1.15)', color: theme.palette.primary.light },
-                    },
-                  }),
+                  '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) },
                 }}
               >
-                {isSpeaking ? (
-                  <VolumeOffIcon sx={{ fontSize: 16 }} />
-                ) : (
-                  <VolumeUpIcon sx={{ fontSize: 16 }} />
-                )}
+                {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
               </IconButton>
             </Tooltip>
           )}
@@ -537,10 +527,10 @@ const MessageBubble = memo(function MessageBubble({
                   disabled={isStreaming}
                   sx={{
                     color: 'text.secondary',
-                    '&:hover': { color: 'primary.main' },
+                    '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) },
                   }}
                 >
-                  <RefreshIcon sx={{ fontSize: 16 }} />
+                  <RotateCw size={14} />
                 </IconButton>
               </span>
             </Tooltip>
@@ -582,7 +572,7 @@ const MessageBubble = memo(function MessageBubble({
           }}
           size="small"
         >
-          <CloseIcon fontSize="small" />
+          <X size={16} />
         </IconButton>
         {selectedImage && (
           <Box

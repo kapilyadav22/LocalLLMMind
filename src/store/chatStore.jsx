@@ -58,7 +58,7 @@ function chatReducer(state, action) {
         id: uuidv4(),
         title: 'New Chat',
         messages: [],
-        model: state.settings.selectedModel || (state.models[0]?.name ?? ''),
+        model: state.settings.selectedModel || (state.models[0]?.name ?? '') || 'gpt-6-astra',
         projectId,
         persona,
         createdAt: new Date().toISOString(),
@@ -97,7 +97,7 @@ function chatReducer(state, action) {
         id: conversationId,
         title: generateTitle([userMessage]),
         messages: [userMessage, assistantMessage],
-        model: model || state.settings.selectedModel || (state.models[0]?.name ?? ''),
+        model: model || state.settings.selectedModel || (state.models[0]?.name ?? '') || 'gpt-6-astra',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

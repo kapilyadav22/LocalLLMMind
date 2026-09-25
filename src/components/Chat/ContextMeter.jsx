@@ -5,17 +5,17 @@ import {
   Tooltip,
   Popover,
   LinearProgress,
-  IconButton,
   Chip,
   alpha,
   useTheme,
   Button,
 } from '@mui/material';
-import MemoryIcon from '@mui/icons-material/Memory';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import CallSplitIcon from '@mui/icons-material/CallSplit';
+import {
+  Cpu,
+  AlertTriangle,
+  CheckCircle2,
+  GitFork,
+} from 'lucide-react';
 import { useChatStore } from '../../store/chatContext';
 
 export default function ContextMeter({ onForkConversation = null }) {
@@ -52,7 +52,7 @@ export default function ContextMeter({ onForkConversation = null }) {
       status = 'warning';
       color = theme.palette.warning.main;
     } else {
-      color = '#00e5ff';
+      color = theme.palette.primary.main;
     }
 
     return {
@@ -94,7 +94,7 @@ export default function ContextMeter({ onForkConversation = null }) {
             },
           }}
         >
-          <MemoryIcon sx={{ fontSize: 16, color: stats.color }} />
+          <Cpu size={14} color={stats.color} />
           <Box sx={{ display: { xs: 'none', sm: 'block' }, width: 48 }}>
             <LinearProgress
               variant="determinate"
@@ -147,7 +147,7 @@ export default function ContextMeter({ onForkConversation = null }) {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <MemoryIcon sx={{ fontSize: 20, color: stats.color }} />
+            <Cpu size={18} color={stats.color} />
             <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
               Context Window Meter
             </Typography>
@@ -234,14 +234,14 @@ export default function ContextMeter({ onForkConversation = null }) {
         {/* Status Notice */}
         {stats.percentage >= 85 ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main', mb: 2 }}>
-            <WarningAmberIcon fontSize="small" />
+            <AlertTriangle size={16} />
             <Typography variant="caption" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
               Context is nearly full. Older conversation history will be truncated by Ollama.
             </Typography>
           </Box>
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'success.main', mb: 2 }}>
-            <CheckCircleOutlinedIcon fontSize="small" />
+            <CheckCircle2 size={16} />
             <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', lineHeight: 1.3 }}>
               Ample headroom. Model has full visibility over entire chat history.
             </Typography>
@@ -254,7 +254,7 @@ export default function ContextMeter({ onForkConversation = null }) {
             fullWidth
             size="small"
             variant="outlined"
-            startIcon={<CallSplitIcon />}
+            startIcon={<GitFork size={14} />}
             onClick={() => {
               setAnchorEl(null);
               onForkConversation();
