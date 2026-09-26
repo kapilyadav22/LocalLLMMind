@@ -49,9 +49,9 @@ test('commits only staged paths, preserves unstaged changes and supports deletio
   assert.deepEqual(commitStagedFiles(current, base, new Set(['a', 'c'])), [{ path: 'a', content: 'new a' }, { path: 'b', content: 'old b' }]);
   assert.equal(restoreFile(current, base[2]).length, 3);
 });
-test('syntax-aware formatting preserves string contents; Python is not reindented heuristically', async () => {
+test('syntax-aware formatting preserves string contents; unsupported languages are not reindented heuristically', async () => {
   const source = 'const text = `a\n  b`;';
   const formatted = await formatCode(source, 'main.js'); assert.match(formatted, /`a\n  b`/);
-  await assert.rejects(formatCode('if True:\n    print(1)\nprint(2)\n', 'main.py'), /left unchanged/);
+  await assert.rejects(formatCode('fn main() {}', 'main.rs'), /left unchanged/);
   assert.equal(await formatCode('{"a":1}', 'a.json'), '{ "a": 1 }\n');
 });

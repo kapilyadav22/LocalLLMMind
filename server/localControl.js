@@ -1,3 +1,6 @@
+import { createFolderStore } from './workspaceFolders.js';
+import { createTerminalStore } from './terminalSessions.js';
+import { formatPython } from './formatCode.js';
 import process from 'node:process';
 import { Buffer } from 'node:buffer';
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -75,6 +78,8 @@ export function isLocalRequest(req) {
 export function createLocalControl({ root, probe = ollamaRunning, findOllama = () => executable('ollama'), findIdes = ideOptions, openIde = launch } = {}) {
   const token = randomBytes(32).toString('hex');
   const workspaceRoot = path.resolve(root, '.local-workspaces');
+  const folders = createFolderStore();
+  const terminals = createTerminalStore();
   const snapshots = new Map();
   const runSessions = new Map();
   let starting;
@@ -98,7 +103,7 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
     child.stderr.unref();
     throw new Error('Ollama is still starting. Retry the connection in a few seconds.');
   }
-  return async (req, res, next) => {
+  const handler = async (req, res, next) => {
     const route = req.url.split('?')[0];
     if (!route.startsWith('/local-api/')) return next();
     const send = (status, data) => {
@@ -115,10 +120,31 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
       if (supplied.length !== token.length || !timingSafeEqual(supplied, Buffer.from(token))) return send(403, { error: 'Local session expired. Retry the action.' });
       if (req.method !== 'POST') return send(405, { error: 'POST required.' });
       const data = await readJson(req);
+      if (route === '/local-api/folders/connect') return send(200, await folders.connect(data.path));
+      if (route === '/local-api/folders/scan') return send(200, await folders.scan(data.id));
+      if (route === '/local-api/folders/save') return send(200, await folders.save(data.id, data.changes));
+      if (route === '/local-api/folders/open-ide') {
+        const folder = await folders.get(data.id);
+        const ide = (await findIdes()).find((item) => item.id === data.ide);
+        if (!ide) throw new Error('Selected IDE is unavailable.');
+        if (process.platform === 'darwin' && ide.target.endsWith('.app')) await openIde('/usr/bin/open', ['-a', ide.target, folder.path]);
+        else await openIde(ide.target, [folder.path]);
+        return send(200, { path: folder.path });
+      }
+      if (route === '/local-api/terminals/create') {
+        const folder = await folders.get(data.folderId);
+        return send(200, await terminals.create({ projectId: data.projectId, cwd: folder.path, cols: data.cols, rows: data.rows }));
+      }
+      if (route === '/local-api/terminals/list') return send(200, { sessions: terminals.list(data.projectId) });
+      if (route === '/local-api/terminals/read') return send(200, terminals.read(data.id, data.cursor));
+      if (route === '/local-api/terminals/input') { terminals.input(data.id, data.input); return send(200, { ok: true }); }
+      if (route === '/local-api/terminals/resize') { terminals.resize(data.id, data.cols, data.rows); return send(200, { ok: true }); }
+      if (route === '/local-api/terminals/close') { terminals.close(data.id); return send(200, { ok: true }); }
       if (route === '/local-api/ollama/start') {
         starting ||= startOllama().finally(() => { starting = null; });
         return send(200, await starting);
       }
+      if (route === '/local-api/projects/format') return send(200, await formatPython({ root, content: data.content, filePath: data.filePath }));
       if (route === '/local-api/projects/save') {
         const files = validateFiles(data.files);
         await mkdir(workspaceRoot, { recursive: true });
@@ -193,22 +219,25 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
           throw new Error('entryPoint or command required.');
         }
 
+        const connected = data.folderId ? await folders.get(data.folderId) : null;
         await mkdir(workspaceRoot, { recursive: true });
         if ((await lstat(workspaceRoot)).isSymbolicLink() || (await realpath(workspaceRoot)) !== workspaceRoot) {
           throw new Error('Workspace directory must not be a symbolic link.');
         }
 
-        let session = data.projectId ? runSessions.get(data.projectId) : null;
+        const runKey = `${data.folderId || 'copy'}:${data.projectId}`;
+        let session = data.projectId ? runSessions.get(runKey) : null;
         if (session?.busy) throw new Error('A command is already running for this project.');
         if (!session) {
-          const directory = await mkdtemp(path.join(workspaceRoot, `run-${randomUUID()}-`));
+          const directory = connected?.path || await mkdtemp(path.join(workspaceRoot, `run-${randomUUID()}-`));
           session = { directory, files: new Map(), busy: false };
-          if (data.projectId) runSessions.set(data.projectId, session);
+          if (data.projectId) runSessions.set(runKey, session);
         }
         const { directory } = session;
         if (await realpath(directory) !== directory) throw new Error('Run directory must not be a symbolic link.');
         session.busy = true;
         try {
+          if (!connected) {
           // Keep installed dependencies between commands; only synchronize editor-owned files.
           const incoming = new Set(files.map((file) => file.path));
           for (const previous of session.files.keys()) {
@@ -231,6 +260,10 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
             if (session.files.get(file.path) !== file.content || !existing) await writeFile(destination, file.content);
           }
           session.files = new Map(files.map((file) => [file.path, file.content]));
+          } else if (data.entryPoint) {
+            const entry = path.join(directory, data.entryPoint);
+            if (await realpath(entry) !== entry || !(await lstat(entry)).isFile()) throw new Error('Cannot run a symbolic link or missing entry point.');
+          }
 
           const enhancedPath = [...new Set([...(process.env.PATH || '').split(path.delimiter), '/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin', '/usr/bin', '/bin'])].join(path.delimiter);
           const start = Date.now();
@@ -281,14 +314,16 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
           return send(200, { stdout, stderr, exitCode, durationMs, workingDirectory: directory });
         } finally {
           session.busy = false;
-          if (!data.projectId) await rm(directory, { recursive: true, force: true }).catch(() => {});
+          if (!data.projectId && !connected) await rm(directory, { recursive: true, force: true }).catch(() => {});
         }
       }
       return send(404, { error: 'Unknown local action.' });
     } catch (error) { return send(400, { error: error.message }); }
   };
+  handler.dispose = () => terminals.dispose();
+  return handler;
 }
 export function localControlPlugin() {
-  const install = (server) => { server.middlewares.use(createLocalControl({ root: server.config.root })); };
+  const install = (server) => { const handler = createLocalControl({ root: server.config.root }); server.middlewares.use(handler); server.httpServer?.once('close', handler.dispose); };
   return { name: 'localllmmind-local-control', configureServer: install, configurePreviewServer: install };
 }

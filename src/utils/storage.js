@@ -124,3 +124,22 @@ export function saveProjectsDebounced(projects) {
     saveProjects(projects);
   }, 800);
 }
+
+export function loadSidebarWidth() {
+  try {
+    const data = localStorage.getItem("llm_ui_sidebar_width");
+    if (!data) return 260;
+    const parsed = parseInt(data, 10);
+    return isNaN(parsed) ? 260 : Math.min(480, Math.max(220, parsed));
+  } catch {
+    return 260;
+  }
+}
+
+export function saveSidebarWidth(width) {
+  try {
+    localStorage.setItem("llm_ui_sidebar_width", String(width));
+  } catch (e) {
+    console.error("Failed to save sidebar width:", e);
+  }
+}

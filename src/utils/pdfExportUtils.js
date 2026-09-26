@@ -125,8 +125,13 @@ export function exportConversationToPdf(conversation) {
     .brand-title {
       font-size: 13pt;
       font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.025em;
+    }
+
+    .brand-title-accent {
       color: #0284c7;
-      letter-spacing: -0.02em;
+      font-weight: 900;
     }
 
     .brand-tag {
@@ -347,7 +352,7 @@ export function exportConversationToPdf(conversation) {
 
   <div class="doc-header">
     <div class="doc-brand">
-      <span class="brand-title">LocalLLMMind</span>
+      <span class="brand-title">Local<span class="brand-title-accent">LLM</span>Mind</span>
       <span class="brand-tag">Private Local AI Workstation</span>
     </div>
     <div class="doc-title">${escapeHtml(title)}</div>

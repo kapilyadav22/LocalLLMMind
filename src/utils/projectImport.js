@@ -3,10 +3,11 @@ import { validateFiles, validateFilePath, MAX_FILES, MAX_PROJECT_BYTES } from '.
 
 export const MAX_IMPORT_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_ARCHIVE_BYTES = 30 * 1024 * 1024;
-const ignoredDirs = new Set(['node_modules', '.git', '.vscode', '.idea', '__macosx', '__pycache__', '.next', '.nuxt', '.cache', '.local-workspaces', 'dist', 'build', 'coverage', '.venv', 'venv', 'target', 'vendor']);
+const ignoredDirs = new Set(['node_modules', '.git', '.vscode', '.idea', '__macosx', '__pycache__', '.next', '.nuxt', '.cache', '.local-workspaces', 'dist', 'build', 'coverage', '.venv', '.formatter-venv', 'venv', 'target', 'vendor']);
 const binary = /\.(png|jpe?g|gif|webp|ico|bmp|avif|pdf|zip|gz|tar|7z|rar|exe|dll|so|dylib|wasm|woff2?|ttf|otf|eot|mp[34]|mov|avi|wav|sqlite3?|db|pyc|class|jar|docx?|xlsx?|pptx?)$/i;
 export function skipReason(path) {
   const parts = path.split('/');
+  if (parts.some((part) => part.startsWith('.llm-save-'))) return 'temporary save file';
   if (parts.some((part) => ignoredDirs.has(part.toLowerCase()))) return 'dependency, build, or editor directory';
   if (parts.at(-1) === '.DS_Store') return 'system file';
   if (/^\.env(?:$|\.(?!example$|sample$|template$))/.test(parts.at(-1)) || /\.(pem|key|p12)$/i.test(path)) return 'local credentials';

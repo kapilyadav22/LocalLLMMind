@@ -3,7 +3,7 @@
  */
 import { localAction } from '../services/localControlService.js';
 
-export async function runCodeSnippet({ code, path = '', allFiles = [], projectId }) {
+export async function runCodeSnippet({ code, path = '', allFiles = [], projectId, folderId }) {
   const start = performance.now();
   const ext = path.split('.').pop()?.toLowerCase() || '';
 
@@ -28,7 +28,7 @@ export async function runCodeSnippet({ code, path = '', allFiles = [], projectId
       }
 
       {
-        const result = await localAction('projects/run', { entryPoint: path, files: filesToSend, projectId });
+        const result = await localAction('projects/run', { entryPoint: path, files: filesToSend, projectId, folderId });
 
         const logs = [];
         if (result.stdout) {
