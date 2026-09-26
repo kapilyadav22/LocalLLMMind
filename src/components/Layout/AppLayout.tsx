@@ -43,7 +43,12 @@ const AboutMeModal = lazy(() => import('../About/AboutMeModal'));
 const JevDecisionStudioModal = lazy(() => import('../common/JevDecisionStudioModal'));
 const SIDEBAR_WIDTH = 280;
 
-export default function AppLayout({ themeMode, onThemeToggle }) {
+export default function AppLayout({
+  themeMode,
+  onThemeToggle,
+  themeConfig,
+  onUpdateThemeConfig,
+}: any) {
   const [mode, setMode] = useState('chat');
   const [codeOpened, setCodeOpened] = useState(false);
   const changeMode = (next) => { setMode(next); if (next === 'code') setCodeOpened(true); };
@@ -58,6 +63,15 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [modelManagerOpen, setModelManagerOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenAppearance = () => {
+      setSettingsInitialTab(5);
+      setSettingsOpen(true);
+    };
+    window.addEventListener('localllmmind-open-appearance', handleOpenAppearance);
+    return () => window.removeEventListener('localllmmind-open-appearance', handleOpenAppearance);
+  }, []);
   const [aboutMeOpen, setAboutMeOpen] = useState(false);
   const [jevStudioOpen, setJevStudioOpen] = useState(false);
   const { state, dispatch } = useChatStore();
@@ -605,6 +619,8 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
             onClose={() => setSettingsOpen(false)}
             themeMode={themeMode}
             onThemeToggle={onThemeToggle}
+            themeConfig={themeConfig}
+            onUpdateThemeConfig={onUpdateThemeConfig}
             sidebarOpen={sidebarOpen}
             onToggleSidebar={handleToggleSidebar}
             initialTab={settingsInitialTab}

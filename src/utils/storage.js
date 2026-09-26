@@ -3,6 +3,7 @@ const KEYS = {
   PROJECTS: 'llm_ui_projects',
   SETTINGS: 'llm_ui_settings',
   THEME_MODE: 'llm_ui_theme_mode',
+  THEME_CONFIG: 'llm_ui_theme_config',
   SHORTCUTS: 'llm_ui_shortcuts',
   SIDEBAR_OPEN: 'llm_ui_sidebar_open',
 };
@@ -67,9 +68,49 @@ export function saveSettings(settings) {
   }
 }
 
+export const DEFAULT_THEME_CONFIG = {
+  preset: 'cyber_dark',
+  mode: 'dark',
+  customPrimaryColor: null,
+  fontSizeScale: 1.0,
+  bubbleStyle: 'rounded',
+  fontFamily: 'system',
+  ambientGlow: true,
+  codeThemeSync: true,
+};
+
+export function loadThemeConfig() {
+  try {
+    const raw = localStorage.getItem(KEYS.THEME_CONFIG);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT_THEME_CONFIG, ...parsed };
+    }
+    const legacyMode = localStorage.getItem(KEYS.THEME_MODE);
+    if (legacyMode === 'light') {
+      return { ...DEFAULT_THEME_CONFIG, preset: 'clean_light', mode: 'light' };
+    }
+    return { ...DEFAULT_THEME_CONFIG };
+  } catch {
+    return { ...DEFAULT_THEME_CONFIG };
+  }
+}
+
+export function saveThemeConfig(config) {
+  try {
+    localStorage.setItem(KEYS.THEME_CONFIG, JSON.stringify(config));
+    if (config?.mode) {
+      localStorage.setItem(KEYS.THEME_MODE, config.mode);
+    }
+  } catch (e) {
+    console.error('Failed to save theme config:', e);
+  }
+}
+
 export function loadThemeMode() {
   try {
-    return localStorage.getItem(KEYS.THEME_MODE) || 'dark';
+    const config = loadThemeConfig();
+    return config.mode || localStorage.getItem(KEYS.THEME_MODE) || 'dark';
   } catch {
     return 'dark';
   }
@@ -78,6 +119,13 @@ export function loadThemeMode() {
 export function saveThemeMode(mode) {
   try {
     localStorage.setItem(KEYS.THEME_MODE, mode);
+    const config = loadThemeConfig();
+    const nextPreset = mode === 'light' ? 'clean_light' : (config.preset === 'clean_light' ? 'cyber_dark' : config.preset);
+    saveThemeConfig({
+      ...config,
+      mode,
+      preset: nextPreset,
+    });
   } catch (e) {
     console.error('Failed to save theme mode:', e);
   }

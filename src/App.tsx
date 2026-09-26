@@ -1,23 +1,41 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import { darkTheme, lightTheme } from './theme';
+import { createCustomTheme, applyThemeCssVariables } from './theme';
 import { ChatProvider } from './store/chatStore';
-import { loadThemeMode, saveThemeMode } from './utils/storage';
+import { loadThemeConfig, saveThemeConfig } from './utils/storage';
 import AppLayout from './components/Layout/AppLayout';
-import type { ThemeMode } from './types';
+import type { ThemeConfig, ThemeMode, ThemePresetId } from './types';
 
 export default function App() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => (loadThemeMode() as ThemeMode) || "dark");
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => loadThemeConfig());
 
   const theme = useMemo(
-    () => (themeMode === 'dark' ? darkTheme : lightTheme),
-    [themeMode]
+    () => createCustomTheme(themeConfig),
+    [themeConfig]
   );
 
+  useEffect(() => {
+    applyThemeCssVariables(themeConfig, theme);
+  }, [themeConfig, theme]);
+
   const handleThemeToggle = useCallback(() => {
-    setThemeMode((prev) => {
-      const next: ThemeMode = prev === 'dark' ? 'light' : 'dark';
-      saveThemeMode(next);
+    setThemeConfig((prev) => {
+      const nextMode: ThemeMode = prev.mode === 'dark' ? 'light' : 'dark';
+      const nextPreset: ThemePresetId = nextMode === 'light' ? 'clean_light' : (prev.preset === 'clean_light' ? 'cyber_dark' : prev.preset);
+      const next: ThemeConfig = {
+        ...prev,
+        mode: nextMode,
+        preset: nextPreset,
+      };
+      saveThemeConfig(next);
+      return next;
+    });
+  }, []);
+
+  const handleUpdateThemeConfig = useCallback((updater: Partial<ThemeConfig> | ((prev: ThemeConfig) => ThemeConfig)) => {
+    setThemeConfig((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+      saveThemeConfig(next);
       return next;
     });
   }, []);
@@ -26,7 +44,12 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ChatProvider>
-        <AppLayout themeMode={themeMode} onThemeToggle={handleThemeToggle} />
+        <AppLayout
+          themeMode={themeConfig.mode}
+          onThemeToggle={handleThemeToggle}
+          themeConfig={themeConfig}
+          onUpdateThemeConfig={handleUpdateThemeConfig}
+        />
       </ChatProvider>
     </ThemeProvider>
   );

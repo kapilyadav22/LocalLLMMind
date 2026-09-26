@@ -1,5 +1,51 @@
 export type ThemeMode = 'light' | 'dark';
 
+export type ThemePresetId =
+  | 'cyber_dark'
+  | 'clean_light'
+  | 'oled_black'
+  | 'synthwave'
+  | 'nordic_pine'
+  | 'tokyo_sunset'
+  | 'ocean_abyss'
+  | 'midnight_rose';
+
+export type UiDensity = 'comfortable' | 'normal' | 'compact';
+export type BubbleStyle = 'rounded' | 'sleek' | 'minimal';
+export type FontFamilyOption = 'system' | 'mono' | 'serif';
+
+export interface ThemeConfig {
+  preset: ThemePresetId;
+  mode: ThemeMode;
+  customPrimaryColor?: string | null;
+  fontSizeScale: number;
+  bubbleStyle: BubbleStyle;
+  fontFamily: FontFamilyOption;
+  ambientGlow: boolean;
+  codeThemeSync: boolean;
+}
+
+export interface ThemePreset {
+  id: ThemePresetId;
+  name: string;
+  mode: ThemeMode;
+  description: string;
+  icon: string;
+  primary: string;
+  primaryLight: string;
+  primaryDark: string;
+  secondary: string;
+  backgroundDefault: string;
+  backgroundPaper: string;
+  surface: string;
+  textPrimary: string;
+  textSecondary: string;
+  divider: string;
+  accentGlow: string;
+  scrollbarThumb: string;
+  swatches: string[];
+}
+
 export interface Attachment {
   name: string;
   type: string;

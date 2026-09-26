@@ -57,7 +57,17 @@ import {
   FolderInput,
   X,
   Brain,
+  Sparkles,
+  Sun,
+  Moon,
+  Type,
+  Paintbrush,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
+import { THEME_PRESETS, ACCENT_COLOR_PRESETS } from '../../theme';
+import { DEFAULT_THEME_CONFIG, loadThemeConfig, saveThemeConfig } from '../../utils/storage';
+import type { ThemeConfig, ThemePresetId, BubbleStyle, FontFamilyOption } from '../../types';
 import ShortcutsManager from '../common/ShortcutsManager';
 import DeveloperBadge from '../common/DeveloperBadge';
 import MemoryManagerDialog from './MemoryManagerDialog';
@@ -102,7 +112,9 @@ export default function SettingsDialog({
   sidebarOpen,
   onToggleSidebar,
   initialTab = 0,
-}) {
+  themeConfig: externalThemeConfig,
+  onUpdateThemeConfig: externalOnUpdateThemeConfig,
+}: any) {
   const { state, dispatch } = useChatStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -111,6 +123,66 @@ export default function SettingsDialog({
   useEffect(() => {
     if (open) setTab(initialTab);
   }, [open, initialTab]);
+
+  // Appearance & Theme Studio state
+  const currentThemeConfig: ThemeConfig = externalThemeConfig || loadThemeConfig();
+  const [customHexInput, setCustomHexInput] = useState(currentThemeConfig.customPrimaryColor || '');
+  const themeFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setCustomHexInput(currentThemeConfig.customPrimaryColor || '');
+  }, [currentThemeConfig.customPrimaryColor]);
+
+  const updateThemeConfig = (updater: Partial<ThemeConfig> | ((prev: ThemeConfig) => ThemeConfig)) => {
+    if (externalOnUpdateThemeConfig) {
+      externalOnUpdateThemeConfig(updater);
+    } else {
+      const next = typeof updater === 'function' ? updater(loadThemeConfig()) : { ...loadThemeConfig(), ...updater };
+      saveThemeConfig(next);
+    }
+  };
+
+  const handleExportTheme = () => {
+    try {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(currentThemeConfig, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `localllmmind-theme-${currentThemeConfig.preset}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Theme configuration exported successfully!', 'success');
+    } catch {
+      showToast('Failed to export theme', 'error');
+    }
+  };
+
+  const handleImportTheme = (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (parsed && typeof parsed === 'object') {
+          updateThemeConfig(parsed);
+          showToast('Theme imported and applied successfully!', 'success');
+        } else {
+          showToast('Invalid theme JSON structure', 'error');
+        }
+      } catch {
+        showToast('Failed to parse theme file', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleResetTheme = () => {
+    updateThemeConfig({ ...(DEFAULT_THEME_CONFIG as ThemeConfig) });
+    setCustomHexInput('');
+    showToast('Theme reset to factory defaults', 'info');
+  };
 
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -1161,63 +1233,700 @@ export default function SettingsDialog({
           <ShortcutsManager />
         </TabPanel>
 
-        {/* Appearance Tab */}
+        {/* Appearance & Custom Themes Studio Tab */}
         <TabPanel value={tab} index={5}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                p: 2,
-                borderRadius: 3,
-                border: '1px solid',
-                borderColor: 'divider',
-                bgcolor: alpha(theme.palette.background.paper, 0.5),
-              }}
-            >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+            {/* Header & Actions */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Dark Mode
+                <Typography variant="h6" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Palette size={20} color={theme.palette.primary.main} />
+                  Appearance & Custom Themes
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {themeMode === 'dark' ? 'Currently using dark theme' : 'Currently using light theme'}
+                  Choose from handcrafted aesthetic presets or personalize your palette, fonts, and geometry.
                 </Typography>
               </Box>
-              <Switch
-                checked={themeMode === 'dark'}
-                onChange={onThemeToggle}
-                color="primary"
-              />
+
+              <Stack direction="row" spacing={1}>
+                <Tooltip title="Export current theme to JSON">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Download size={14} />}
+                    onClick={handleExportTheme}
+                    sx={{ textTransform: 'none', fontSize: '0.78rem', py: 0.5, px: 1.25 }}
+                  >
+                    Export
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Import custom theme from JSON">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Upload size={14} />}
+                    onClick={() => themeFileInputRef.current?.click()}
+                    sx={{ textTransform: 'none', fontSize: '0.78rem', py: 0.5, px: 1.25 }}
+                  >
+                    Import
+                  </Button>
+                </Tooltip>
+                <input
+                  type="file"
+                  ref={themeFileInputRef}
+                  accept=".json"
+                  style={{ display: 'none' }}
+                  onChange={handleImportTheme}
+                />
+                <Tooltip title="Reset appearance to defaults">
+                  <IconButton
+                    size="small"
+                    onClick={handleResetTheme}
+                    sx={{ color: 'text.secondary', border: '1px solid', borderColor: 'divider' }}
+                  >
+                    <RotateCcw size={14} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
             </Box>
 
+            {/* Live Interactive Swatch & Preview Stage */}
             <Box
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                p: 2,
-                borderRadius: 3,
+                p: 2.5,
+                borderRadius: 3.5,
+                bgcolor: alpha(theme.palette.background.paper, 0.7),
                 border: '1px solid',
-                borderColor: 'divider',
-                bgcolor: alpha(theme.palette.background.paper, 0.5),
+                borderColor: alpha(theme.palette.primary.main, 0.25),
+                boxShadow: `0 8px 32px -8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Show Left Sidebar
-                </Typography>
+              {/* Preview Bar Top */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, pb: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      bgcolor: theme.palette.primary.main,
+                      boxShadow: `0 0 10px ${theme.palette.primary.main}`,
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Live Interface Swatch
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                  <Chip
+                    label={THEME_PRESETS[currentThemeConfig.preset]?.name || 'Cyber Dark'}
+                    size="small"
+                    sx={{
+                      height: 22,
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                      color: 'primary.main',
+                      border: '1px solid',
+                      borderColor: alpha(theme.palette.primary.main, 0.3),
+                    }}
+                  />
+                  <Chip
+                    label={currentThemeConfig.mode.toUpperCase()}
+                    size="small"
+                    sx={{
+                      height: 22,
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      bgcolor: alpha(theme.palette.text.primary, 0.06),
+                      color: 'text.secondary',
+                    }}
+                  />
+                </Stack>
+              </Box>
+
+              {/* Simulated Conversation Stage */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75 }}>
+                {/* User Bubble */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Box
+                    sx={{
+                      maxWidth: '82%',
+                      py: 1,
+                      px: 2,
+                      borderRadius: currentThemeConfig.bubbleStyle === 'minimal' ? '4px' : (currentThemeConfig.bubbleStyle === 'sleek' ? '10px' : '18px'),
+                      bgcolor: alpha(theme.palette.primary.main, 0.14),
+                      border: '1px solid',
+                      borderColor: alpha(theme.palette.primary.main, 0.3),
+                      color: 'text.primary',
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Summarize why local AI models ensure privacy and rapid iteration.
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Assistant Bubble */}
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: currentThemeConfig.bubbleStyle === 'minimal' ? '4px' : '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: alpha(theme.palette.primary.main, 0.15),
+                      color: 'primary.main',
+                      border: '1px solid',
+                      borderColor: alpha(theme.palette.primary.main, 0.3),
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Sparkles size={14} />
+                  </Box>
+                  <Box
+                    sx={{
+                      flex: 1,
+                      p: 1.75,
+                      borderRadius: currentThemeConfig.bubbleStyle === 'minimal' ? '4px' : (currentThemeConfig.bubbleStyle === 'sleek' ? '10px' : '18px'),
+                      bgcolor: alpha(theme.palette.background.default, 0.7),
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.55 }}>
+                      Local LLMs run entirely on-device without third-party network transmission, preventing telemetry leaks and enabling zero-latency offline execution:
+                    </Typography>
+                    <Box
+                      sx={{
+                        p: 1,
+                        borderRadius: 1.5,
+                        bgcolor: alpha(theme.palette.text.primary, 0.04),
+                        fontFamily: '"JetBrains Mono", monospace',
+                        fontSize: '0.76rem',
+                        color: theme.palette.primary.light || theme.palette.primary.main,
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.text.primary, 0.08),
+                        mb: 1.25,
+                      }}
+                    >
+                      ollama run deepseek-r1:8b --keepalive 1h
+                    </Box>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        sx={{
+                          py: 0.25,
+                          px: 1.25,
+                          fontSize: '0.72rem',
+                          borderRadius: currentThemeConfig.bubbleStyle === 'minimal' ? '4px' : '8px',
+                        }}
+                      >
+                        Action Button
+                      </Button>
+                      <Chip
+                        label="⚡ 54.2 tok/s"
+                        size="small"
+                        sx={{ height: 22, fontSize: '0.68rem', bgcolor: alpha(theme.palette.success.main, 0.1), color: 'success.main' }}
+                      />
+                    </Stack>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Presets Gallery Grid */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Curated Theme Presets
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                Select a crafted palette tailored for nighttime coding, OLED contrast, or crisp daylight clarity.
+              </Typography>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 1.5,
+                }}
+              >
+                {Object.values(THEME_PRESETS).map((p) => {
+                  const isSelected = currentThemeConfig.preset === p.id;
+                  return (
+                    <Box
+                      key={p.id}
+                      onClick={() => {
+                        updateThemeConfig({
+                          preset: p.id,
+                          mode: p.mode,
+                          customPrimaryColor: null,
+                        });
+                      }}
+                      sx={{
+                        p: 1.75,
+                        borderRadius: 2.75,
+                        cursor: 'pointer',
+                        transition: 'all 0.18s ease-in-out',
+                        bgcolor: isSelected
+                          ? alpha(theme.palette.primary.main, 0.08)
+                          : alpha(theme.palette.background.paper, 0.4),
+                        border: '1.5px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        boxShadow: isSelected ? `0 0 16px -2px ${alpha(p.primary, 0.25)}` : 'none',
+                        '&:hover': {
+                          bgcolor: alpha(p.primary, 0.06),
+                          borderColor: alpha(p.primary, 0.5),
+                          transform: 'translateY(-1px)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ fontSize: '1.15rem', lineHeight: 1 }}>{p.icon}</Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {p.name}
+                          </Typography>
+                        </Box>
+                        {isSelected && (
+                          <Chip
+                            label="Active"
+                            size="small"
+                            color="primary"
+                            sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700 }}
+                          />
+                        )}
+                      </Box>
+
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.4,
+                          mb: 1.5,
+                          minHeight: 32,
+                        }}
+                      >
+                        {p.description}
+                      </Typography>
+
+                      {/* Swatch dots */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        {p.swatches.map((color, idx) => (
+                          <Box
+                            key={idx}
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '50%',
+                              bgcolor: color,
+                              border: '1px solid',
+                              borderColor: 'rgba(255,255,255,0.15)',
+                              boxShadow: idx === 2 ? `0 0 8px ${color}` : 'none',
+                            }}
+                          />
+                        ))}
+                        <Typography variant="caption" sx={{ ml: 'auto', fontSize: '0.7rem', color: 'text.secondary', fontWeight: 600 }}>
+                          {p.mode.toUpperCase()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            {/* Accent Color Customizer */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                bgcolor: alpha(theme.palette.background.paper, 0.4),
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Paintbrush size={16} color={theme.palette.primary.main} />
+                    Primary Accent Hue
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Select a vibrant brand accent color or input any custom hex code.
+                  </Typography>
+                </Box>
+                {currentThemeConfig.customPrimaryColor && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      updateThemeConfig({ customPrimaryColor: null });
+                      setCustomHexInput('');
+                    }}
+                    sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.25 }}
+                  >
+                    Reset to Theme Default
+                  </Button>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 2 }}>
+                {ACCENT_COLOR_PRESETS.map((accent) => {
+                  const isActive = (currentThemeConfig.customPrimaryColor || theme.palette.primary.main).toLowerCase() === accent.hex.toLowerCase();
+                  return (
+                    <Tooltip key={accent.name} title={accent.name}>
+                      <Box
+                        onClick={() => {
+                          updateThemeConfig({ customPrimaryColor: accent.hex });
+                          setCustomHexInput(accent.hex);
+                        }}
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: '50%',
+                          bgcolor: accent.hex,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: isActive ? '3px solid #ffffff' : '2px solid transparent',
+                          boxShadow: isActive ? `0 0 14px ${accent.hex}` : `0 2px 6px ${alpha(accent.hex, 0.3)}`,
+                          transition: 'all 0.15s ease',
+                          '&:hover': {
+                            transform: 'scale(1.12)',
+                            boxShadow: `0 0 12px ${accent.hex}`,
+                          },
+                        }}
+                      >
+                        {isActive && <Check size={16} color="#ffffff" />}
+                      </Box>
+                    </Tooltip>
+                  );
+                })}
+              </Box>
+
+              {/* Custom Hex Picker Input */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box
+                  sx={{
+                    position: 'relative',
+                    width: 38,
+                    height: 38,
+                    borderRadius: 2,
+                    bgcolor: theme.palette.primary.main,
+                    border: '2px solid',
+                    borderColor: 'divider',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={currentThemeConfig.customPrimaryColor || theme.palette.primary.main}
+                    onChange={(e) => {
+                      const hex = e.target.value;
+                      setCustomHexInput(hex);
+                      updateThemeConfig({ customPrimaryColor: hex });
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: -10,
+                      left: -10,
+                      width: 60,
+                      height: 60,
+                      opacity: 0,
+                      cursor: 'pointer',
+                    }}
+                  />
+                </Box>
+                <TextField
+                  size="small"
+                  placeholder="#3b82f6"
+                  value={customHexInput || currentThemeConfig.customPrimaryColor || theme.palette.primary.main}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomHexInput(val);
+                    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                      updateThemeConfig({ customPrimaryColor: val });
+                    }
+                  }}
+                  sx={{ width: 140, '& input': { fontFamily: 'monospace', fontSize: '0.82rem' } }}
+                  slotProps={{
+                    input: {
+                      startAdornment: <InputAdornment position="start"><Palette size={14} /></InputAdornment>,
+                    },
+                  }}
+                />
                 <Typography variant="caption" color="text.secondary">
-                  {sidebarOpen
-                    ? 'Sidebar is currently visible (Shortcut: ⌘B / Ctrl+B)'
-                    : 'Sidebar is currently hidden (Shortcut: ⌘B / Ctrl+B)'}
+                  Custom hex value or pick with color spectrum
                 </Typography>
               </Box>
-              <Switch
-                checked={Boolean(sidebarOpen)}
-                onChange={onToggleSidebar}
-                color="primary"
-              />
+            </Box>
+
+            {/* Bubble Geometry & Font Family Customization */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                gap: 2,
+              }}
+            >
+              {/* Bubble Radius */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: alpha(theme.palette.background.paper, 0.4),
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  Chat Bubble Geometry
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Controls the border curvature of chat message bubbles.
+                </Typography>
+                <Stack spacing={1}>
+                  {[
+                    { id: 'rounded', label: 'Rounded (18px)', desc: 'Soft modern curved bubbles' },
+                    { id: 'sleek', label: 'Sleek (10px)', desc: 'Balanced contemporary tech radius' },
+                    { id: 'minimal', label: 'Sharp Minimal (4px)', desc: 'Terminal / high density cards' },
+                  ].map((item) => {
+                    const isSelected = (currentThemeConfig.bubbleStyle || 'rounded') === item.id;
+                    return (
+                      <Box
+                        key={item.id}
+                        onClick={() => updateThemeConfig({ bubbleStyle: item.id as BubbleStyle })}
+                        sx={{
+                          p: 1.25,
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          border: '1px solid',
+                          borderColor: isSelected ? 'primary.main' : 'divider',
+                          transition: 'all 0.15s ease',
+                          '&:hover': { bgcolor: alpha(theme.palette.text.primary, 0.04) },
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{item.label}</Typography>
+                          <Typography variant="caption" color="text.secondary">{item.desc}</Typography>
+                        </Box>
+                        {isSelected && <Check size={16} color={theme.palette.primary.main} />}
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+
+              {/* Typography Family */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: alpha(theme.palette.background.paper, 0.4),
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  Typography Font Family
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Select the core typeface for workstation chat and interface.
+                </Typography>
+                <Stack spacing={1}>
+                  {[
+                    { id: 'system', label: 'Modern Sans (Inter)', desc: 'Optimized for digital screens' },
+                    { id: 'mono', label: 'Developer Mono (JetBrains)', desc: 'Fixed-width developer aesthetic' },
+                    { id: 'serif', label: 'Editorial Serif (Newsreader)', desc: 'Literary book reading feel' },
+                  ].map((item) => {
+                    const isSelected = (currentThemeConfig.fontFamily || 'system') === item.id;
+                    return (
+                      <Box
+                        key={item.id}
+                        onClick={() => updateThemeConfig({ fontFamily: item.id as FontFamilyOption })}
+                        sx={{
+                          p: 1.25,
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          border: '1px solid',
+                          borderColor: isSelected ? 'primary.main' : 'divider',
+                          transition: 'all 0.15s ease',
+                          '&:hover': { bgcolor: alpha(theme.palette.text.primary, 0.04) },
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{item.label}</Typography>
+                          <Typography variant="caption" color="text.secondary">{item.desc}</Typography>
+                        </Box>
+                        {isSelected && <Check size={16} color={theme.palette.primary.main} />}
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            </Box>
+
+            {/* UI Scaling / Font Size */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                bgcolor: alpha(theme.palette.background.paper, 0.4),
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                UI Scaling & Text Size
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                Adjust interface density for smaller screens or comfortable reading.
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+                {[
+                  { scale: 0.85, label: 'Compact', percent: '85%' },
+                  { scale: 1.0, label: 'Standard', percent: '100%' },
+                  { scale: 1.15, label: 'Large', percent: '115%' },
+                ].map((item) => {
+                  const isSelected = (currentThemeConfig.fontSizeScale || 1.0) === item.scale;
+                  return (
+                    <Box
+                      key={item.label}
+                      onClick={() => updateThemeConfig({ fontSizeScale: item.scale })}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                        border: '1.5px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        transition: 'all 0.15s ease',
+                        '&:hover': { bgcolor: alpha(theme.palette.text.primary, 0.04) },
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                      <Typography variant="caption" color="text.secondary">{item.percent}</Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            {/* Atmosphere & Switches */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {/* Ambient Glow */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 2,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: alpha(theme.palette.background.paper, 0.4),
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Sparkles size={16} color={theme.palette.primary.main} />
+                    Ambient Atmosphere Glow
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Radiates a gentle background aura matching your theme accent color (dark modes only)
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={Boolean(currentThemeConfig.ambientGlow)}
+                  onChange={(e) => updateThemeConfig({ ambientGlow: e.target.checked })}
+                  color="primary"
+                />
+              </Box>
+
+              {/* Dark Mode Quick Switch */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 2,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: alpha(theme.palette.background.paper, 0.4),
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Dark Mode
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {themeMode === 'dark' ? 'Currently using dark mode' : 'Currently using light mode'}
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={themeMode === 'dark'}
+                  onChange={onThemeToggle}
+                  color="primary"
+                />
+              </Box>
+
+              {/* Show Left Sidebar */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 2,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: alpha(theme.palette.background.paper, 0.4),
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Show Left Sidebar
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {sidebarOpen
+                      ? 'Sidebar is currently visible (Shortcut: ⌘B / Ctrl+B)'
+                      : 'Sidebar is currently hidden (Shortcut: ⌘B / Ctrl+B)'}
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={Boolean(sidebarOpen)}
+                  onChange={onToggleSidebar}
+                  color="primary"
+                />
+              </Box>
             </Box>
           </Box>
         </TabPanel>
