@@ -311,7 +311,7 @@ localllmmind/
 
 ## 👨‍💻 Author
 
-**Kapil Kumar Yadav** — *Lead Engineer & Designer*
+**Kapil Kumar Yadav** — *Senior Software Engineer*
 
 - [![GitHub](https://img.shields.io/badge/GitHub-kapilyadav22-181717?logo=github)](https://github.com/kapilyadav22)
 - [![LinkedIn](https://img.shields.io/badge/LinkedIn-kapilyadav22-0A66C2?logo=linkedin)](https://www.linkedin.com/in/kapilyadav22/)

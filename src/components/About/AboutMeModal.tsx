@@ -190,7 +190,7 @@ function AboutMeModalComponent({ open, onClose }) {
           </Typography>
 
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1, fontSize: '0.86rem', lineHeight: 1.55 }}>
-            Creator and lead engineer of <BrandText fontWeight={800} />, the high-performance local AI workspace engineered with frontier cloud model integration, private Ollama execution, and interactive code workspace tooling.
+            Creator and Senior Software Engineer of <BrandText fontWeight={800} />, the high-performance local AI workspace engineered with frontier cloud model integration, private Ollama execution, and interactive code workspace tooling.
           </Typography>
         </Box>
 
