@@ -16,6 +16,10 @@
 
 </div>
 
+<p align="center">
+  <img src="docs/assets/real_chat_dashboard.png" alt="LocalLLMMind Desktop Workstation" width="100%" style="border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);" />
+</p>
+
 ---
 
 ## 🌟 Overview
@@ -27,6 +31,10 @@
 ## ✨ Features
 
 ### 👁️ Multimodal Vision Support
+<p align="center">
+  <img src="docs/assets/real_vision_multimodal.png" alt="LocalLLMMind Multimodal Vision & Image Inspection" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
 - **Paste, drag-and-drop, or browse** images directly into the chat composer.
 - Automatic Base64 conversion to Ollama's `/api/chat` `images` array.
 - Click-to-zoom lightbox for high-resolution image inspection.
@@ -42,8 +50,12 @@
 - Interactive collapsible thought accordion with live pulsing indicator during chain-of-thought.
 
 ### 📄 RAG / Document Chat ("Chat with Docs")
+<p align="center">
+  <img src="docs/assets/real_rag_demo.png" alt="Local RAG & Knowledge Base" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
 - Drag-and-drop or browse **40+ file formats**: source code (`.py`, `.js`, `.ts`, `.rs`, `.go`, `.java`, `.cpp`), configs (`.json`, `.yaml`, `.toml`, `.env`), data (`.csv`, `.sql`), and docs (`.md`, `.txt`).
-- Client-side text extraction — nothing leaves your machine.
+- Client-side text extraction and vector chunking sandbox — nothing leaves your machine.
 - 500KB safety guard to prevent context window overflows.
 
 ### 📥 In-App Model Manager
@@ -61,8 +73,12 @@
 - Switch personas per-conversation from the chat header.
 
 ### ⚔️ Arena Mode (Side-by-Side Comparison)
+<p align="center">
+  <img src="docs/assets/real_model_comparison_results.png" alt="Model Arena Comparison Results" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
 - Run two models simultaneously on the same prompt.
-- Compare responses side-by-side and vote for the better output.
+- Compare responses side-by-side with live generation speeds (`tok/s`) and vote for the better output.
 
 ### 📝 Prompt Library & Slash Commands
 - Built-in prompt template library with CRUD, categories, and import/export.
@@ -122,6 +138,47 @@
 ### 📱 Progressive Web App
 - Installable as a standalone desktop app via Chrome/Edge.
 - Offline caching service worker for app shell and static assets.
+
+### 🎨 Custom UI Themes & Appearance Editor
+<p align="center">
+  <img src="docs/assets/real_theme_customizer.png" alt="LocalLLMMind Theme Customizer" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
+- **8 Curated Designer Presets**: Modern Dark, Clean Light, Midnight Obsidian, Cyberpunk Neon, Tokyo Night, Forest Emerald, Sunset Glow, and Royal Amethyst.
+- **Custom Accent Color Swatches**: Pick from curated neon/pastel accents or custom hex values with instant live preview.
+- **Message Bubble Roundness**: Granular slider from sharp (4px) to pill (24px) bubble shapes.
+- **Typography Scale Adjuster**: Adjust font scaling (Small, Medium, Large, Extra Large) across all chat and workspace interfaces.
+- **Persistent Preferences**: Theme configuration syncs across restarts via local storage.
+
+### ⚡ Autonomous Agent Mode & Implicit Live Tools
+<p align="center">
+  <img src="docs/assets/real_agent_mode_active.png" alt="Autonomous Agent Mode & Implicit Web Search" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
+- **Implicit Live Web Search**: The agent queries DuckDuckGo for live facts, current documentation, and news without requiring manual approval clicks, citing sources directly.
+- **Real-Time Weather Integration**: Live weather conditions and forecasts via Open-Meteo.
+- **Interactive Agent Activity Log**: View step-by-step tool traces, execution times, token counts, and export trace JSONs.
+- **Collapsible Activity Feed**: Quick "Hide activity" / "Show activity" toggle with persistent visibility preference.
+- **Human-in-the-Loop Safe Execution**: Destructive actions (modifying files and executing shell commands) require explicit approval.
+
+### 🌐 Multi-Provider AI Support (Local & Cloud)
+<p align="center">
+  <img src="docs/assets/real_ai_providers.png" alt="LocalLLMMind AI Provider Configuration" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
+- **First-Class Ollama Integration**: 100% private, native local execution.
+- **Top Cloud Providers**: Seamlessly toggle between OpenAI, Anthropic Claude, Google Gemini, and xAI Grok.
+- **TypeSafe Jev Integration**: Native adapter for deterministic and structured LLM decision workflows.
+- **Custom Endpoints**: Connect any OpenAI-compatible API gateway with custom base URLs and headers.
+
+### 📐 TypeSafe Jev Decision Studio
+<p align="center">
+  <img src="docs/assets/real_jev_studio.png" alt="TypeSafe Jev Structured Decision Studio" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+
+- **Deterministic Evaluation Workflows**: Model selection, structured state parameters, and decision criteria matrix.
+- **Strict Output Validation**: Ensure schema compliance and structured JSON guarantees.
+- **Live Test Suite**: Execute multi-attribute scoring and benchmark decision matrices before production deployment.
 
 ### 🌓 Dark & Light Theme
 - Curated glassmorphism design with fluid gradients and subtle micro-animations.
@@ -281,15 +338,21 @@ Copyright © 2026 Kapil Kumar Yadav. All rights reserved.
 
 
 ### Code workspace: opening projects and adding context
+<p align="center">
+  <img src="docs/assets/real_code_chat_antigravity.png" alt="Antigravity IDE-style Developer Agent Chat" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
+<p align="center">
+  <img src="docs/assets/real_github_link.png" alt="GitHub Account Linking in Git Sidebar" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
 
+- **Antigravity IDE-Style Developer Agent Chat**: The AI Assistant tab is designed like modern agentic IDEs (Antigravity IDE / Cursor). As the agent works, tool steps and streaming text auto-scroll down smoothly. The prompt composer remains anchored at the bottom, so you can reply immediately when the agent finishes each task! Multi-turn conversation history is preserved per project.
+- **1-Click Proposal Application**: File proposals generated by the agent feature an "Apply" button that immediately updates your workspace files and refreshes the editor.
+- **GitHub Account Linking & Remote Git Sync**: Link your GitHub account using a Personal Access Token (`repo`, `gist` scopes) directly from the Git sidebar. Push workspace files to existing or newly created GitHub repositories, or export code snippets directly to GitHub Gists.
 - Use **Code → Open folder** to connect an original local source folder by path. **Import a folder copy** or the project actions menu accepts folder copies, ZIPs, and exported project JSON. GitHub-style ZIPs are unwrapped automatically; relative paths, source text, and review comments are preserved.
 - Edits stay as browser drafts until you press **Save** (Cmd/Ctrl+S). Connected projects save to the original folder with conflict checks; external edits are checked every three seconds. Imported copies stay separate until saved to a local workspace. **Open in IDE** supports available desktop editors. **Search project** searches all source drafts and jumps to matching lines.
 - Imports support up to 2,000 UTF-8 source files / 20 MB total (2 MB per file, 30 MB compressed ZIP). Dependency folders, build output, editor metadata, binary assets, and local credential files are skipped, with a visible import report. This is a source editor, not a binary-asset manager.
-- In **AI Assistant**, use **Attach files**, **Attach folder**, or drag text/source files onto the prompt area. Remove individual attachments or clear them all. Attachments are read-only model context, not project files, and are cleared when switching projects. Up to 20 attachments of 512 KB each are supported. Context is sent to the selected provider; choose Ollama to keep generation local.
-- For larger projects, use **Project context → Open tabs only**. File paths remain available to the assistant, while file contents are limited to the selected scope. Combined context is limited to 120,000 characters; individual AI proposals remain limited to 80 files / 2 MB and always require review before applying.
 - **Run** saves connected source changes before execution in the project directory. **Terminal** uses persistent interactive shell sessions: working directory, environment, command history, and running servers survive closing the panel or reloading the page while the local app server stays running. Sessions support Ctrl+C, resize, reconnect, multiple tabs, and explicit termination. Restarting the app server ends its terminal sessions.
 - **Format** uses Prettier for JavaScript, TypeScript, JSON, HTML, CSS, Markdown, Vue, and YAML. Python / Python stubs use Black through the local server. Run `npm run setup:formatters` once (Python 3.10+ required) to install the pinned Black runtime into `.formatter-venv`; no global packages are modified. Python formatting follows Black's four-space indentation and preserves comments. Syntax errors leave source unchanged and appear above the workspace. Other languages show guidance to use their IDE formatter.
-- **Workspace layout:** project import/export, snapshots, and rename live in the project actions menu (`…`). Run and Format remain visible beside the editor. The editor actions menu contains appearance, outline, download, and file operations. Stack/language options can be expanded in the assistant.
 - The **Git** panel tracks browser-workspace checkpoints, not your original Git repository. Commits include only staged paths; unstaged changes remain visible. Deleted tracked files can be restored from their baseline.
 
 Desktop actions require `npm run dev` or `npm run preview` on localhost. A static/Docker-hosted browser app cannot start programs on your computer. Tests: `npm test`; production build: `npm run build`.
@@ -303,3 +366,40 @@ Desktop actions require `npm run dev` or `npm run preview` on localhost. A stati
 - **Playground & evaluations:** tune prompts and generation settings, save named presets, compare repeatable fixture tasks across local models, and export measured results. Evaluation scores are explicit assertion passes, not general correctness claims. Fixtures never execute host commands or contact external services.
 
 The existing model comparison Arena, generation statistics, context meter, local document retrieval, history, and settings remain available. Cloud providers work in ordinary chat/playground; agent tools currently use Ollama's native tool-calling protocol. MCP and packaged third-party tool integrations are follow-up adapters, not included yet. See [tool development and limitations](docs/AGENT_TOOLS.md).
+
+---
+
+## 📸 Real Screenshots & Demo Video
+
+<p align="center">
+  <video src="docs/assets/demo_video.webm" width="100%" controls autoplay loop muted style="border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);"></video>
+</p>
+
+### 🎬 Live Demo Video
+- **Interactive Demo Walkthrough**: [`docs/assets/demo_video.webm`](docs/assets/demo_video.webm) *(High-definition WebM live walkthrough recorded on macOS: Agent Mode, live tools, Theme Studio, Code Workspace, and RAG)*
+
+### 🖼️ Real Feature Scenarios & High-Resolution Screenshots
+
+| # | Scenario / Feature | Real Screenshot | Description |
+| :---: | :--- | :---: | :--- |
+| **1** | **Antigravity IDE Agent Chat** | [Inspect Preview](docs/assets/real_code_chat_antigravity.png) | Multi-turn developer agent chat with continuous auto-scrolling, code proposals, and sticky bottom prompt composer. |
+| **2** | **GitHub Account Linking** | [Inspect Preview](docs/assets/real_github_link.png) | Git Source Control sidebar with GitHub PAT token connection, account badge, and remote repository sync options. |
+| **3** | **Push Project to GitHub** | [Inspect Preview](docs/assets/real_github_push.png) | Connected GitHub account profile with 1-click Push to remote repository, branch target, and commit authoring. |
+| **4** | **Multimodal Vision** | [Inspect Preview](docs/assets/real_vision_multimodal.png) | Upload images with real-time thumbnail preview, size badge, and visual layout/color analysis prompt. |
+| **5** | **Code Studio Refactor** | [Inspect Preview](docs/assets/real_code_refactor.png) | Full project file explorer with Python/JS syntax highlighting and AI Assistant refactoring prompt. |
+| **6** | **Local RAG & Knowledge Base** | [Inspect Preview](docs/assets/real_rag_demo.png) | Local RAG document dialog showing chunking statistics, token counts, and semantic retrieval sandbox. |
+| **7** | **Extensive Code Review & Comments** | [Inspect Preview](docs/assets/real_code_comments_extensive.png) | Multi-tab code workspace with file tree, editor, and dedicated line-targeted review comments panel. |
+| **8** | **AI Providers Configuration** | [Inspect Preview](docs/assets/real_ai_providers.png) | Unified provider settings: OpenAI, Anthropic Claude, Google Gemini, xAI Grok, Jev, Ollama, and Custom endpoints. |
+| **9** | **TypeSafe Jev Decision Studio** | [Inspect Preview](docs/assets/real_jev_studio.png) | Deterministic decision studio modal with model selector, state schema editor, and evaluation criteria matrix. |
+| **10** | **Model Comparison & Arena** | [Inspect Preview](docs/assets/real_model_comparison_results.png) | Side-by-side responses (Llama 3.2 vs DeepSeek-R1) with live `tok/s` benchmarks, token counts, and voting chips. |
+| **11** | **Chat Dashboard** | [Inspect Preview](docs/assets/real_chat_dashboard.png) | Full workstation home showing sidebar, project folders, model selector, context meter, and quick prompts. |
+| **12** | **Autonomous Agent Mode (Active)** | [Inspect Preview](docs/assets/real_agent_mode_active.png) | Step-by-step tool trace, live implicit DuckDuckGo search execution, and collapsible activity panel. |
+| **13** | **Autonomous Agent Mode (Clean)** | [Inspect Preview](docs/assets/real_agent_mode_hidden.png) | Streamlined view with activity collapsed for distraction-free reading of grounded agent answers. |
+| **14** | **Theme Customizer & Swatches** | [Inspect Preview](docs/assets/real_theme_customizer.png) | 8 curated theme presets, custom accent color swatches, bubble roundness slider, and font scale tuner. |
+| **15** | **Evaluations & Benchmark Lab** | [Inspect Preview](docs/assets/real_evaluations_lab.png) | System prompt tuning, fixture test runs, pass/fail assertion metrics, and model latency comparisons. |
+
+### 📢 Social Media Promotional Cards
+- **Social Promo Banner**: [`docs/assets/social_media_card.jpg`](docs/assets/social_media_card.jpg)
+- **Hero Graphic**: [`docs/assets/hero_banner.jpg`](docs/assets/hero_banner.jpg)
+
+

@@ -1163,6 +1163,7 @@ export default function CodeWorkspace({ onModels, active = true }) {
             ) : (
               <GitSourceControlSidebar
                 key={activeId}
+                project={project}
                 disabled={locked}
                 gitState={gitStatus}
                 activePath={activeDiffPath || file?.path}
@@ -1549,204 +1550,9 @@ export default function CodeWorkspace({ onModels, active = true }) {
                 </Box>
 
                 {/* Tab Contents Container */}
-                <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                  <Button fullWidth size="small" sx={{ mb: 1 }} disabled={agentBusy} variant={rightTab === 'agent' ? 'contained' : 'outlined'} onClick={() => setRightTab(rightTab === 'agent' ? 'build' : 'agent')}>{rightTab === 'agent' ? 'Back to code generation' : 'Open agent workspace'}</Button>
-                  {rightTab === 'agent' ? <CodeAgentPanel key={project.id} project={project} settings={state.settings} models={state.models} initialModel={actualModel} onBusy={setAgentBusy} onApplyFile={(filePath, content) => updateProject((current) => ({ files: mergeFiles(current.files, [{ path: filePath, content }]) }))} /> : rightTab === 'build' ? (
-                    <Stack spacing={2.25}>
-                      {/* Premium Header Banner */}
-                      {/* <Box
-                        sx={{
-                          p: 1.75,
-                          borderRadius: 2.5,
-                          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%)',
-                          border: '1px solid',
-                          borderColor: 'rgba(59, 130, 246, 0.2)',
-                        }}
-                      >
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-                          <Cpu size={15} color="var(--mui-palette-primary-main, #3b82f6)" />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
-                            Code Synthesizer
-                          </Typography>
-                        </Stack>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.5 }}>
-                          Extend code, generate new files, write tests, or refactor with side-by-side review.
-                        </Typography>
-                      </Box> */}
-
-                      {/* Provider-wise Model Selector */}
-                      <ModelSelector
-                        value={actualModel}
-                        onChange={(newModel) => setModel(newModel)}
-                        variant="stacked"
-                        disabled={locked}
-                        onOpenSettings={onModels}
-                      />
-
-                      <Box component="details" sx={{ '& summary': { cursor: 'pointer', color: 'text.secondary', fontSize: '0.75rem' } }}>
-                        <summary>Stack / language · {language}</summary>
-                        <Stack direction="row" spacing={0.6} useFlexGap sx={{ flexWrap: 'wrap', mb: 1, mt: 1 }}>
-                          {STACK_PRESETS.map((tech) => (
-                            <Chip
-                              key={tech}
-                              size="small"
-                              label={tech}
-                              disabled={locked}
-                              onClick={() => setLanguage(tech)}
-                              color={language === tech ? 'primary' : 'default'}
-                              variant={language === tech ? 'filled' : 'outlined'}
-                              sx={{ fontSize: '0.7rem', height: 22, cursor: 'pointer' }}
-                            />
-                          ))}
-                        </Stack>
-                        <TextField
-                          size="small"
-                          fullWidth
-                          value={language}
-                          disabled={locked}
-                          onChange={(event) => setLanguage(event.target.value)}
-                          placeholder="Or custom stack, e.g. Python, React..."
-                        />
-                      </Box>
-
-                      {/* Prompt input with quick inspiration chips */}
-                      <Box>
-                        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                          <Typography sx={caption}>
-                            {project.files.length ? 'Modification Prompt' : 'New Project Prompt'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
-                            ⌘ + Enter to run
-                          </Typography>
-                        </Stack>
-
-                        <Box onDragOver={(event) => event.preventDefault()} onDrop={handlePromptDrop}>
-                        <TextField
-                          slotProps={{ htmlInput: { 'aria-label': 'Coding assistant prompt' } }}
-                          placeholder="Describe desired modifications, features, bug fixes, or new endpoints in detail..."
-                          multiline
-                          minRows={5}
-                          value={prompt}
-                          disabled={locked}
-                          onChange={(event) => setPrompt(event.target.value)}
-                          onKeyDown={(event) => {
-                            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                              event.preventDefault();
-                              generate();
-                            }
-                          }}
-                          sx={{
-                            width: '100%',
-                            '& .MuiOutlinedInput-root': {
-                              fontSize: '0.85rem',
-                              lineHeight: 1.5,
-                            },
-                          }}
-                        />
-
-                        </Box>
-                        <Box sx={{ mt: 1.5, p: 1.25, border: '1px dashed', borderColor: 'divider', borderRadius: 2 }} onDragOver={(event) => event.preventDefault()} onDrop={handlePromptDrop}>
-                          <Typography sx={caption}>Attachments · {attachments.length}/20</Typography>
-                          <Stack direction="row" spacing={1} sx={{ my: 1, '& button': { whiteSpace: 'nowrap' } }}>
-                            <Button size="small" startIcon={<Paperclip size={14} />} disabled={locked} onClick={() => attachmentInputRef.current?.click()}>Attach files</Button>
-                            <Button size="small" startIcon={<FolderOpen size={14} />} disabled={locked} onClick={() => attachmentFolderRef.current?.click()}>Attach folder</Button>
-                          </Stack>
-                          <Typography variant="caption" color="text.secondary">Drop source or text files here (512 KB each). Sent as reference to the selected model.</Typography>
-                          {attachments.map((item) => <Stack key={item.id} direction="row" sx={{ alignItems: 'center', mt: 1, minWidth: 0 }}>
-                            <Tooltip title={item.path}><Typography variant="caption" noWrap sx={{ flex: 1 }}>{item.path} · {(item.size / 1024).toFixed(1)} KB</Typography></Tooltip>
-                            <IconButton size="small" aria-label={`Remove attachment ${item.path}`} disabled={locked} onClick={() => setAttachments((previous) => previous.filter((file) => file.id !== item.id))}><X size={13} /></IconButton>
-                          </Stack>)}
-                          {attachments.length > 0 && <Button size="small" disabled={locked} onClick={() => setAttachments([])}>Clear attachments</Button>}
-                        </Box>
-                        <TextField select fullWidth size="small" label="Project context" value={contextMode} disabled={locked} onChange={(event) => setContextMode(event.target.value)} sx={{ mt: 2 }}>
-                          <MenuItem value="project">All {project.files.length} files</MenuItem><MenuItem value="open">Open tabs only ({openPaths.length} files)</MenuItem>
-                        </TextField>
-                        <Typography variant="caption" color="text.secondary">For large projects, open the files you want to change and select open tabs only.</Typography>
-                        {/* Quick prompt inspiration pills */}
-                        <Stack direction="row" spacing={0.6} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
-                          {[
-                            { label: '+ Add Unit Tests', text: 'Generate comprehensive unit tests with edge cases.' },
-                            { label: '+ Refactor Code', text: 'Refactor code into clean, modular, and maintainable functions.' },
-                            { label: '+ Fix Bugs', text: 'Analyze and fix any potential bugs, race conditions, or null pointers.' },
-                            { label: '+ Add Type Hints', text: 'Add strict type definitions and docstrings throughout.' },
-                          ].map((pill) => (
-                            <Chip
-                              key={pill.label}
-                              size="small"
-                              label={pill.label}
-                              disabled={locked}
-                              onClick={() => setPrompt((prev) => (prev ? `${prev}\n${pill.text}` : pill.text))}
-                              sx={{
-                                fontSize: '0.68rem',
-                                height: 20,
-                                cursor: 'pointer',
-                                bgcolor: 'action.hover',
-                                '&:hover': { bgcolor: 'action.selected' },
-                              }}
-                            />
-                          ))}
-                        </Stack>
-                      </Box>
-
-                      {unresolvedTotal > 0 && (
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          color="info"
-                          label={`${unresolvedTotal} unresolved comment(s) included in context`}
-                        />
-                      )}
-
-                      {/* Primary Generate Button */}
-                      {busy ? (
-                        <Stack spacing={1}>
-                          <LinearProgress />
-                          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-                            Synthesizing changes… {(progress / 1024).toFixed(1)} KB received
-                          </Typography>
-                          <Button color="error" size="small" variant="outlined" onClick={() => controller.current?.abort()}>
-                            Stop generation
-                          </Button>
-                        </Stack>
-                      ) : (
-                        <Button
-                          variant="contained"
-                          startIcon={<Sparkles size={16} />}
-                          disabled={!prompt.trim() || !actualModel || locked}
-                          onClick={generate}
-                          sx={{
-                            py: 1,
-                            borderRadius: 2,
-                            fontWeight: 700,
-                            fontSize: '0.84rem',
-                            textTransform: 'none',
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
-                            boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
-                          }}
-                        >
-                          Generate changes
-                        </Button>
-                      )}
-
-                      {/* Last Change Summary */}
-                      {project.summary && (
-                        <Box sx={{ p: 1.75, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography sx={caption}>Last Change</Typography>
-                            {project.previous && (
-                              <Button size="small" startIcon={<Undo2 size={12} />} disabled={locked} onClick={() => askDialog('undo')} sx={{ py: 0.1, px: 0.6, fontSize: '0.68rem', textTransform: 'none' }}>
-                                Restore
-                              </Button>
-                            )}
-                          </Stack>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'text.secondary' }}>
-                            {project.summary}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Stack>
-                  ) : (
-                    /* Ultra-Premium Comments Panel */
+                {rightTab === 'comments' ? (
+                  <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                    {/* Ultra-Premium Comments Panel */}
                     <Stack spacing={2}>
                       {/* Scope Switch: Current file vs Project-wide */}
                       <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1992,8 +1798,31 @@ export default function CodeWorkspace({ onModels, active = true }) {
                         })
                       )}
                     </Stack>
-                  )}
-                </Box>
+                  </Box>
+                ) : (
+                  <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                    <CodeAgentPanel
+                      key={project.id}
+                      project={project}
+                      activeFile={file}
+                      openPaths={openPaths}
+                      settings={state.settings}
+                      models={state.models}
+                      initialModel={actualModel}
+                      onBusy={setAgentBusy}
+                      onApplyFile={(filePath, content) => {
+                        updateProject((current) => ({
+                          files: mergeFiles(current.files, [{ path: filePath, content }]),
+                        }));
+                        showToast(`Applied changes to ${filePath}`, 'success');
+                      }}
+                      onSelectFile={selectFile}
+                      onOpenSettings={onModels}
+                      externalPrompt={prompt}
+                      onClearExternalPrompt={() => setPrompt('')}
+                    />
+                  </Box>
+                )}
               </Box>
             )}
           </Box>
