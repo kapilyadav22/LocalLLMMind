@@ -29,6 +29,7 @@ import {
   Phone,
 } from 'lucide-react';
 import ModelSelector from '../common/ModelSelector';
+import { PROVIDERS, resolveModelProvider } from '../../constants/apiProviders';
 import SlashCommandPopover from './SlashCommandPopover';
 import PromptLibraryDialog from './PromptLibraryDialog';
 import KnowledgeTagPopover from './KnowledgeTagPopover';
@@ -345,11 +346,16 @@ export default function MessageInput({
     }, 50);
   };
 
+  const { provider } = resolveModelProvider(currentModel, state.models || []);
+  const isOllamaModel = provider === PROVIDERS.OLLAMA;
+
   const getPlaceholder = () => {
     if (isListening) return 'Listening… speak now';
-    if (!state.connectionChecked) return 'Connecting to Ollama…';
-    if (!state.isConnected) return '⚠ Ollama is not connected — check Settings';
-    if (state.models.length === 0) return '⚠ No models found — pull a model first';
+    if (isOllamaModel) {
+      if (!state.connectionChecked) return 'Connecting to Ollama…';
+      if (!state.isConnected) return '⚠ Ollama is not connected — start Ollama or switch to a cloud model below';
+      if (state.models.length === 0) return '⚠ No local models found — pull a model or switch to a cloud model below';
+    }
     if (!currentModel) return 'Select a model to start chatting…';
     if (state.isStreaming) return 'Type a prompt to queue (Enter to queue)…';
     if (attachedDocuments.length > 0) return 'Ask a question about the attached document(s)…';
@@ -357,12 +363,27 @@ export default function MessageInput({
     return 'Send a message (type / for commands, or drop images & files)…';
   };
 
-  const isInputDisabled = !state.isConnected || state.models.length === 0 || !currentModel;
+  // Chat is enabled whenever:
+  // 1) A cloud model is selected (OpenAI, Claude, Gemini, Grok, Jev, Custom) — independent of Ollama
+  // 2) Or Ollama is connected with models available
+  const isInputDisabled = Boolean(isOllamaModel && (!state.isConnected || state.models.length === 0));
+  const isSendDisabled = Boolean(disabled || !currentModel || isInputDisabled);
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if ((!text && attachedImages.length === 0 && attachedDocuments.length === 0) || isInputDisabled) return;
+    if (!text && attachedImages.length === 0 && attachedDocuments.length === 0) return;
     if (disabled && !state.isStreaming) return;
+
+    if (isOllamaModel && !state.isConnected) {
+      showToast('Ollama is not connected. Please start Ollama or switch to a cloud model below.', 'warning');
+      return;
+    }
+    if (isOllamaModel && state.models.length === 0) {
+      showToast('No local models found in Ollama. Please pull a model or switch to a cloud model below.', 'warning');
+      return;
+    }
+    if (isSendDisabled) return;
+
     // Stop listening if active
     if (isListening) toggleListening();
     setInterimText('');
@@ -392,7 +413,7 @@ export default function MessageInput({
       const textarea = (inputRef.current as HTMLElement).querySelector('textarea');
       if (textarea) textarea.style.height = 'auto';
     }
-  }, [input, attachedImages, attachedDocuments, attachedKnowledgeTags, disabled, isInputDisabled, isListening, toggleListening, onSend, currentModel, replyTo, onCancelReply, webSearchEnabled]);
+  }, [input, attachedImages, attachedDocuments, attachedKnowledgeTags, disabled, isSendDisabled, isOllamaModel, isListening, toggleListening, onSend, currentModel, replyTo, onCancelReply, webSearchEnabled, state.isConnected, state.models.length]);
 
   const handleKeyDown = (e) => {
     // Handle keyboard navigation inside the knowledge tag popover
@@ -810,7 +831,7 @@ export default function MessageInput({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={isInputDisabled}
+          disabled={disabled}
           fullWidth
           variant="standard"
           slotProps={{
@@ -937,7 +958,7 @@ export default function MessageInput({
                 <IconButton
                   component="label"
                   size="small"
-                  disabled={isInputDisabled}
+                  disabled={disabled || (isOllamaModel && !state.isConnected)}
                   sx={{
                     color: (attachedImages.length > 0 || attachedDocuments.length > 0) ? 'primary.main' : 'text.secondary',
                     bgcolor: (attachedImages.length > 0 || attachedDocuments.length > 0) ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
@@ -967,7 +988,7 @@ export default function MessageInput({
                 <span>
                   <IconButton
                     onClick={toggleListening}
-                    disabled={isInputDisabled}
+                    disabled={disabled || (isOllamaModel && !state.isConnected)}
                     sx={{
                       color: isListening ? '#fff' : 'text.secondary',
                       bgcolor: isListening
@@ -994,7 +1015,7 @@ export default function MessageInput({
                 <span>
                   <IconButton
                     onClick={onOpenVoiceMode}
-                    disabled={isInputDisabled}
+                    disabled={disabled || (isOllamaModel && !state.isConnected)}
                     sx={{
                       color: 'text.secondary',
                       p: '6px',
@@ -1050,15 +1071,15 @@ export default function MessageInput({
                 </Tooltip>
               </Box>
             ) : (
-              <Tooltip title={isInputDisabled ? 'Connect to Ollama first' : 'Send message (Enter)'}>
+              <Tooltip title={isOllamaModel && !state.isConnected ? 'Connect to Ollama or select a cloud model' : 'Send message (Enter)'}>
                 <span>
                   <IconButton
                     onClick={handleSend}
-                    disabled={(!input.trim() && attachedImages.length === 0 && attachedDocuments.length === 0) || disabled || isInputDisabled}
+                    disabled={(!input.trim() && attachedImages.length === 0 && attachedDocuments.length === 0) || disabled || isSendDisabled}
                     size="small"
                     sx={{
-                      color: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isInputDisabled ? '#fff' : 'text.secondary',
-                      bgcolor: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isInputDisabled
+                      color: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isSendDisabled ? '#fff' : 'text.secondary',
+                      bgcolor: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isSendDisabled
                         ? 'primary.main'
                         : 'transparent',
                       p: '7px',

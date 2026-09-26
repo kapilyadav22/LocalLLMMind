@@ -53,6 +53,17 @@ function ModelSelectorComponent({
   // Models available for active provider
   const availableModelsForProvider = useMemo(() => {
     if (activeProviderId === PROVIDERS.OLLAMA) {
+      if (localModels.length === 0) {
+        return [
+          {
+            id: '',
+            name: state.isConnected ? 'No local models pulled' : 'Ollama is offline',
+            context: '',
+            badge: 'Ollama',
+            badgeColor: '#64748b',
+          },
+        ];
+      }
       return localModels.map((m) => ({
         id: m.name,
         name: m.name,
@@ -204,13 +215,29 @@ function ModelSelectorComponent({
                     </Box>
                     <Chip
                       size="small"
-                      label={ready ? (prov.id === PROVIDERS.OLLAMA ? 'Local' : 'Ready') : 'Key'}
+                      label={
+                        ready
+                          ? prov.id === PROVIDERS.OLLAMA
+                            ? 'Online'
+                            : 'Ready'
+                          : prov.id === PROVIDERS.OLLAMA
+                            ? 'Offline'
+                            : 'Key'
+                      }
                       sx={{
                         height: 16,
                         fontSize: '0.62rem',
                         fontWeight: 600,
-                        bgcolor: ready ? alpha(theme.palette.success.main, 0.12) : alpha(theme.palette.warning.main, 0.12),
-                        color: ready ? 'success.main' : 'warning.main',
+                        bgcolor: ready
+                          ? alpha(theme.palette.success.main, 0.12)
+                          : prov.id === PROVIDERS.OLLAMA
+                            ? alpha(theme.palette.text.secondary, 0.12)
+                            : alpha(theme.palette.warning.main, 0.12),
+                        color: ready
+                          ? 'success.main'
+                          : prov.id === PROVIDERS.OLLAMA
+                            ? 'text.secondary'
+                            : 'warning.main',
                       }}
                     />
                   </Box>

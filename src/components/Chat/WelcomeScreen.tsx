@@ -6,6 +6,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useChatStore } from '../../store/chatContext';
+import { PROVIDERS, resolveModelProvider } from '../../constants/apiProviders';
 import { APP_NAME } from '../../constants/appConstants';
 import AppLogo from '../common/AppLogo';
 import BrandText from '../common/BrandText';
@@ -34,15 +35,15 @@ const suggestions = [
   },
 ];
 
-function ConnectionSetupCard() {
+function ConnectionSetupCard({ isOnline }) {
   const { state } = useChatStore();
+  if (isOnline || state.isConnected) return null;
   if (!state.connectionChecked) return <CircularProgress size={24} />;
-  if (state.isConnected) return null;
   return (
-    <Box sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, maxWidth: 460, textAlign: 'left', bgcolor: 'background.paper' }}>
+    <Box sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, maxWidth: 460, textAlign: 'left', bgcolor: 'background.paper', mb: 3 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>Bring your local models online</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 1.5, fontSize: '0.82rem' }}>
-        Start your installed Ollama server using the Start Ollama button above, or configure API keys in Settings.
+        Start your installed Ollama server using the Start Ollama button above, or switch to an online cloud provider (OpenAI, Claude, Gemini, Grok, Jev) below.
       </Typography>
       <Typography variant="caption" color="text.secondary">
         Need Ollama? <a href="https://ollama.com/download" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Download Ollama</a>.
@@ -53,11 +54,25 @@ function ConnectionSetupCard() {
 
 export default function WelcomeScreen({ onSuggestionClick }) {
   const theme = useTheme();
-  const { state } = useChatStore();
+  const { state, getActiveConversation } = useChatStore();
+  const activeConvo = getActiveConversation?.() || state.conversations.find((c) => c.id === state.activeConversationId);
+  const currentModel = activeConvo?.model || state.settings?.selectedModel || '';
+  const { provider } = resolveModelProvider(currentModel, state.models || []);
+  const isOnline = provider !== PROVIDERS.OLLAMA;
 
-  const showSuggestions = (state.isConnected && state.models.length > 0) || Boolean(state.settings?.apiKeyOpenAI || state.settings?.apiKeyAnthropic || state.settings?.apiKeyGemini || state.settings?.apiKeyGrok);
+  const showSuggestions = isOnline || (state.isConnected && state.models.length > 0) || Boolean(
+    state.settings?.apiKeyOpenAI ||
+    state.settings?.apiKeyAnthropic ||
+    state.settings?.apiKeyGemini ||
+    state.settings?.apiKeyGrok ||
+    state.settings?.apiKeys?.openai ||
+    state.settings?.apiKeys?.anthropic ||
+    state.settings?.apiKeys?.gemini ||
+    state.settings?.apiKeys?.grok ||
+    state.settings?.apiKeys?.jev ||
+    state.settings?.apiKeys?.custom
+  );
 
-  const activeConvo = state.conversations.find((c) => c.id === state.activeConversationId);
   const activeProject = activeConvo?.projectId
     ? state.projects?.find((p) => p.id === activeConvo.projectId)
     : null;
@@ -135,8 +150,8 @@ export default function WelcomeScreen({ onSuggestionClick }) {
           : 'Ask a question, analyze code, or pick a workflow below.'}
       </Typography>
 
-      {/* Connection status card */}
-      <ConnectionSetupCard />
+      {/* Connection status card (only shown if using Ollama and offline) */}
+      <ConnectionSetupCard isOnline={isOnline} />
 
       {/* Modern Workflow Cards */}
       {showSuggestions && (

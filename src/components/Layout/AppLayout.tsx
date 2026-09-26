@@ -23,6 +23,7 @@ import {
   Settings as SettingsIconLucide,
   RotateCw,
   Plus,
+  X,
 } from 'lucide-react';
 import OllamaStartButton from '../common/OllamaStartButton';
 import Sidebar from './Sidebar';
@@ -58,6 +59,7 @@ export default function AppLayout({
     if (typeof window !== 'undefined' && window.innerWidth < 900) return false;
     return loadSidebarOpen();
   });
+  const [ollamaBannerDismissed, setOllamaBannerDismissed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -460,8 +462,8 @@ export default function AppLayout({
           />
         )}
 
-        {/* Disconnection banner — shown when connection fails */}
-        {state.connectionChecked && !state.isConnected && (
+        {/* Disconnection banner — shown when connection fails and not dismissed */}
+        {!ollamaBannerDismissed && state.connectionChecked && !state.isConnected && (
           <Box
             sx={{
               display: 'flex',
@@ -519,6 +521,21 @@ export default function AppLayout({
             >
               Settings
             </Button>
+            <Tooltip title="Dismiss banner">
+              <IconButton
+                size="small"
+                onClick={() => setOllamaBannerDismissed(true)}
+                sx={{
+                  color: 'error.main',
+                  opacity: 0.8,
+                  '&:hover': { opacity: 1, bgcolor: alpha(theme.palette.error.main, 0.12) },
+                  p: '4px',
+                  ml: 0.5,
+                }}
+              >
+                <X size={14} />
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
 
