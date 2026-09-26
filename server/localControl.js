@@ -1,3 +1,6 @@
+import { executeLiveTool } from './liveTools.js';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createFolderStore } from './workspaceFolders.js';
 import { createTerminalStore } from './terminalSessions.js';
 import { formatPython } from './formatCode.js';
@@ -120,6 +123,12 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
       if (supplied.length !== token.length || !timingSafeEqual(supplied, Buffer.from(token))) return send(403, { error: 'Local session expired. Retry the action.' });
       if (req.method !== 'POST') return send(405, { error: 'POST required.' });
       const data = await readJson(req);
+      if (route === '/local-api/tools/live') return send(200, await executeLiveTool(data.name, data.arguments || {}));
+      if (route === '/local-api/tools/git-status') {
+        const folder = await folders.get(data.folderId);
+        const { stdout } = await promisify(execFile)('git', ['-c', 'core.fsmonitor=false', '-C', folder.path, 'status', '--short', '--branch'], { timeout: 10000, maxBuffer: 100000 });
+        return send(200, { output: stdout });
+      }
       if (route === '/local-api/folders/connect') return send(200, await folders.connect(data.path));
       if (route === '/local-api/folders/scan') return send(200, await folders.scan(data.id));
       if (route === '/local-api/folders/save') return send(200, await folders.save(data.id, data.changes));
@@ -330,6 +339,7 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
               err = (err + d.toString()).slice(0, 50000);
             });
 
+            res.once?.('close', () => { if (!res.writableEnded) { try { if (process.platform !== 'win32') process.kill(-child.pid, 'SIGTERM'); else child.kill(); } catch { /* Already stopped. */ } } });
             child.once('error', (e) => {
               clearTimeout(timer);
               resolve({ stdout: out, stderr: `${err}\n${e.message}`.trim(), exitCode: 1 });

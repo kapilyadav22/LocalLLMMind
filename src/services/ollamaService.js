@@ -58,94 +58,26 @@ export async function fetchModels(ollamaUrl = 'http://localhost:11434') {
  * @param {function} params.onError - Callback on error
  * @param {AbortSignal} params.signal - AbortController signal
  */
-export async function streamChat({
-  model,
-  messages,
-  options = {},
-  ollamaUrl = 'http://localhost:11434',
-  onToken,
-  onDone,
-  onError,
-  signal,
-}) {
-  const baseUrl = getBaseUrl(ollamaUrl);
-  const url = baseUrl ? `${baseUrl}/api/chat` : '/api/chat';
-
+export async function streamChat({ model, messages, options = {}, ollamaUrl = 'http://localhost:11434', onToken, onDone, onError, signal }) {
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: true,
-        options: {
-          temperature: options.temperature ?? 0.7,
-          top_p: options.topP ?? 0.9,
-          num_ctx: options.contextWindow || options.numCtx || 4096,
-          ...(options.maxTokens && { num_predict: options.maxTokens }),
-        },
-      }),
-      signal,
+    const response = await fetch(`${getBaseUrl(ollamaUrl)}/api/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+      body: JSON.stringify({ model, messages, stream: true, options: { temperature: options.temperature ?? 0.7, top_p: options.topP ?? 0.9, num_ctx: options.contextWindow || options.numCtx || 4096, ...(options.maxTokens && { num_predict: options.maxTokens }) } }),
     });
-
-    if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const parsed = JSON.parse(line);
-          if (parsed.message?.content) {
-            onToken?.(parsed.message.content);
-          }
-          if (parsed.done) {
-            onDone?.(parsed);
-            return;
-          }
-        } catch {
-          // Skip malformed JSON lines
-        }
-      }
-    }
-
-    // Process any remaining buffer
-    if (buffer.trim()) {
-      try {
-        const parsed = JSON.parse(buffer);
-        if (parsed.message?.content) {
-          onToken?.(parsed.message.content);
-        }
-        if (parsed.done) {
-          onDone?.(parsed);
-          return;
-        }
-      } catch {
-        // Skip
-      }
-    }
-
-    onDone?.({});
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      onDone?.({ aborted: true });
-    } else {
-      onError?.(error);
-    }
-  }
+    if (!response.ok) throw new Error(`Ollama API error: ${(await response.text()).slice(0, 1000)}`);
+    let final;
+    await readOllamaStream(response, (data) => { if (data.message?.content) onToken?.(data.message.content); if (data.done) final = data; });
+    if (!final) throw new Error('Ollama connection closed before generation completed. Retry the request.');
+    onDone?.(final);
+  } catch (error) { if (signal?.aborted || error.name === 'AbortError') onDone?.({ aborted: true }); else onError?.(error); }
+}
+async function readOllamaStream(response, onData) {
+  const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
+  const consume = (line) => { if (!line.trim()) return; const data = JSON.parse(line); if (data.error) throw new Error(data.error); onData(data); };
+  try {
+    while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''; for (const line of lines) consume(line); }
+    buffer += decoder.decode(); if (buffer.trim()) consume(buffer);
+  } finally { await reader.cancel(); }
 }
 
 /**
@@ -172,40 +104,12 @@ export async function pullModel({ model, ollamaUrl = 'http://localhost:11434', o
     throw new Error(`Failed to pull model: ${errorText || response.statusText}`);
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const parsed = JSON.parse(line);
-        const percent =
-          parsed.total && parsed.completed
-            ? Math.round((parsed.completed / parsed.total) * 100)
-            : 0;
-        onProgress?.({
-          status: parsed.status || '',
-          completed: parsed.completed || 0,
-          total: parsed.total || 0,
-          percent,
-        });
-        if (parsed.status === 'success') {
-          return true;
-        }
-      } catch {
-        // Skip malformed lines
-      }
-    }
-  }
+  let succeeded = false;
+  await readOllamaStream(response, (parsed) => {
+    onProgress?.({ status: parsed.status || '', completed: parsed.completed || 0, total: parsed.total || 0, percent: parsed.total && parsed.completed ? Math.round((parsed.completed / parsed.total) * 100) : 0 });
+    if (parsed.status === 'success') succeeded = true;
+  });
+  if (!succeeded) throw new Error('Model download ended before completion. Retry the download.');
   return true;
 }
 
@@ -293,3 +197,19 @@ export async function generateConversationTitle({
 }
 
 
+
+export async function fetchRunningModels(ollamaUrl) {
+  const response = await fetch(`${getBaseUrl(ollamaUrl)}/api/ps`, { signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error(`Unable to read loaded models (${response.status}).`);
+  return (await response.json()).models || [];
+}
+export async function setModelLoaded({ model, loaded, ollamaUrl, signal }) {
+  const response = await fetch(`${getBaseUrl(ollamaUrl)}/api/generate`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, stream: false, keep_alive: loaded ? '10m' : 0 }),
+    signal: signal || AbortSignal.timeout(120000),
+  });
+  if (!response.ok) throw new Error((await response.text()).slice(0, 1000) || 'Model operation failed.');
+  const data = await response.json(); if (data.error) throw new Error(data.error);
+  return data;
+}

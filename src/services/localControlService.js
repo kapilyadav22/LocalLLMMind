@@ -6,7 +6,7 @@ export async function localStatus() {
   }
   const status = await response.json(); sessionToken = status.token; return status;
 }
-export async function localAction(action, body = {}, retry = true) {
+export async function localAction(action, body = {}, retry = true, signal = undefined) {
   if (!sessionToken) {
     statusRequest ||= localStatus().finally(() => { statusRequest = null; });
     await statusRequest;
@@ -15,9 +15,9 @@ export async function localAction(action, body = {}, retry = true) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-LocalLLMMind-Token': sessionToken },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(action === 'projects/run' ? 75000 : 45000),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(action === 'projects/run' ? 75000 : 45000)]) : AbortSignal.timeout(action === 'projects/run' ? 75000 : 45000),
   });
-  if (response.status === 403 && retry) { sessionToken = null; return localAction(action, body, false); }
+  if (response.status === 403 && retry) { sessionToken = null; return localAction(action, body, false, signal); }
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Local server is unavailable. Restart npm run dev and reconnect.');
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Local action failed.');

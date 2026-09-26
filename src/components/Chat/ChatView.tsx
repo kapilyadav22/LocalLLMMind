@@ -1,3 +1,8 @@
+import { createAgentTools, clockContext } from '../../agent/tools.js';
+import { useAgentRuntime } from '../../hooks/useAgentRuntime';
+import AgentActivity from '../Agent/AgentActivity';
+import AgentLab from '../Agent/AgentLab';
+import { searchKnowledge } from '../../utils/knowledgeStorage';
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   Box,
@@ -37,6 +42,8 @@ import {
   FileText,
   Clock,
   ListPlus,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
@@ -147,6 +154,18 @@ export default function ChatView({ onOpenSettings }) {
   const [sandboxArtifact, setSandboxArtifact] = useState(null);
 
   // Model Arena (Dual Model Comparison) state
+  const [agentMode, setAgentMode] = useState(() => localStorage.getItem('localllmmind_chat_agent') === 'true');
+  const [showAgentActivity, setShowAgentActivity] = useState(() => localStorage.getItem('localllmmind_show_agent_activity') !== 'false');
+  const toggleAgentActivity = useCallback(() => {
+    setShowAgentActivity((prev) => {
+      const next = !prev;
+      localStorage.setItem('localllmmind_show_agent_activity', String(next));
+      return next;
+    });
+  }, []);
+  const [labOpen, setLabOpen] = useState(false);
+  const agentRuntime = useAgentRuntime(createAgentTools({ knowledgeSearch: (query) => searchKnowledge(query) }));
+  const streamAgent = agentRuntime.stream;
   const [arenaMode, setArenaMode] = useState(false);
   const [arenaModelA, setArenaModelA] = useState('');
   const [arenaModelB, setArenaModelB] = useState('');
@@ -447,9 +466,9 @@ export default function ChatView({ onOpenSettings }) {
 
       abortControllerRef.current = new AbortController();
 
-      await streamAnyChat({
+      await (agentMode ? streamAgent : streamAnyChat)({
         model: targetModel,
-        messages: apiMessages,
+        messages: [{ role: 'system', content: `Trusted current date/time: ${JSON.stringify(clockContext())}. You have implicit live web search and tools available. Whenever answering questions requiring current facts, events, documentation, or live information, use web_search or relevant tools implicitly without hesitation. As a helpful agent, execute tools and present clear, synthesized results directly to the user.` }, ...apiMessages],
         options: {
           temperature: currentPersona?.temperature ?? state.settings.temperature,
           topP: currentPersona?.topP ?? state.settings.topP,
@@ -543,7 +562,7 @@ export default function ChatView({ onOpenSettings }) {
         signal: abortControllerRef.current.signal,
       });
     },
-    [dispatch, state.settings]
+    [dispatch, state.settings, state.models, agentMode, streamAgent, currentPersona]
   );
 
   // Helper to run dual parallel stream for Model Arena
@@ -839,7 +858,7 @@ export default function ChatView({ onOpenSettings }) {
       }
 
       // Handle Arena Mode (Dual Parallel Stream)
-      if (arenaMode) {
+      if (arenaMode && !agentMode) {
         const targetModelA = arenaModelA || state.models[0]?.name || targetModel;
         const targetModelB = arenaModelB || state.models[1]?.name || state.models[0]?.name || targetModel;
 
@@ -892,7 +911,7 @@ export default function ChatView({ onOpenSettings }) {
       setTimeout(() => scrollToBottom('smooth'), 50);
       await runStream(convoId, targetModel, apiMessages);
     },
-    [state.isConnected, state.settings, state.models, activeConvo, state.activeConversationId, dispatch, runStream, runArenaStream, arenaMode, arenaModelA, arenaModelB, state.isStreaming]
+    [state.isConnected, state.settings, state.models, activeConvo, state.activeConversationId, dispatch, runStream, runArenaStream, arenaMode, arenaModelA, arenaModelB, state.isStreaming, agentMode]
   );
 
   useEffect(() => {
@@ -1084,6 +1103,31 @@ export default function ChatView({ onOpenSettings }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+      <Box sx={{ display: 'flex', gap: 1, px: 2, py: 0.5, borderBottom: 1, borderColor: 'divider', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Button size="small" disabled={state.isStreaming} variant={agentMode ? 'contained' : 'outlined'} onClick={() => { const next = !agentMode; setAgentMode(next); if (next) setArenaMode(false); localStorage.setItem('localllmmind_chat_agent', String(next)); }}>Agent mode {agentMode ? 'on' : 'off'}</Button>
+        {agentMode && (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={showAgentActivity ? <EyeOff size={14} /> : <Eye size={14} />}
+            onClick={toggleAgentActivity}
+            sx={{ textTransform: 'none', fontSize: '0.78rem' }}
+          >
+            {showAgentActivity ? 'Hide activity' : 'Show activity'}
+          </Button>
+        )}
+        <Button size="small" onClick={() => setLabOpen(true)}>Playground & evaluations</Button>
+        <Typography variant="caption" color="text.secondary">{agentMode ? 'Autonomous agent · implicit web search & live tools · tool-capable model' : 'Enable Agent mode for live tools and implicit web search'}</Typography>
+      </Box>
+      {agentMode && (
+        <AgentActivity
+          runtime={agentRuntime}
+          compact
+          visible={showAgentActivity}
+          onToggleVisibility={toggleAgentActivity}
+        />
+      )}
+      <AgentLab open={labOpen} onClose={() => setLabOpen(false)} settings={state.settings} models={state.models} />
       {/* Top Header / Action Bar when conversation is active */}
       {/* Top Header / Action Bar when conversation is active */}
       {hasMessages && (

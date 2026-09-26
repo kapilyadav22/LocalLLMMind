@@ -66,6 +66,7 @@ import { STACK_PRESETS } from '../../constants/editorConstants';
 import { SIDEBAR_TABS } from '../../constants/gitConstants';
 import { computeGitStatus } from '../../utils/gitService';
 import CodeEditor from './CodeEditor';
+import CodeAgentPanel from '../Agent/CodeAgentPanel';
 import ProjectSearch from './ProjectSearch';
 import PersistentTerminal from './PersistentTerminal';
 import { useConnectedFolder } from '../../hooks/useConnectedFolder';
@@ -131,6 +132,7 @@ export default function CodeWorkspace({ onModels, active = true }) {
   const [prompt, setPrompt] = useState('');
   const [language, setLanguage] = useState('Auto');
   const [model, setModel] = useState('');
+  const [agentBusy, setAgentBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [pending, setPending] = useState(null);
@@ -216,7 +218,7 @@ export default function CodeWorkspace({ onModels, active = true }) {
   const project = projects.find((item) => item.id === activeId);
   const file = project?.files.find((item) => item.path === path);
   const actualModel = model || state.settings.selectedModel || state.models[0]?.name || '';
-  const baseLocked = busy || !!pending || desktopBusy || importBusy || attachmentBusy || formatBusy || consoleBusy || terminalBusy;
+  const baseLocked = agentBusy || busy || !!pending || desktopBusy || importBusy || attachmentBusy || formatBusy || consoleBusy || terminalBusy;
   const folder = useConnectedFolder(project, setProjects, baseLocked);
   const locked = baseLocked || folder.busy;
   const diskDirty = project?.connectedPath ? folderChanges(project).length : 0;
@@ -1548,7 +1550,8 @@ export default function CodeWorkspace({ onModels, active = true }) {
 
                 {/* Tab Contents Container */}
                 <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                  {rightTab === 'build' ? (
+                  <Button fullWidth size="small" sx={{ mb: 1 }} disabled={agentBusy} variant={rightTab === 'agent' ? 'contained' : 'outlined'} onClick={() => setRightTab(rightTab === 'agent' ? 'build' : 'agent')}>{rightTab === 'agent' ? 'Back to code generation' : 'Open agent workspace'}</Button>
+                  {rightTab === 'agent' ? <CodeAgentPanel key={project.id} project={project} settings={state.settings} models={state.models} initialModel={actualModel} onBusy={setAgentBusy} onApplyFile={(filePath, content) => updateProject((current) => ({ files: mergeFiles(current.files, [{ path: filePath, content }]) }))} /> : rightTab === 'build' ? (
                     <Stack spacing={2.25}>
                       {/* Premium Header Banner */}
                       {/* <Box

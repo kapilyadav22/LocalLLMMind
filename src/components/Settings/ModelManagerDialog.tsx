@@ -39,7 +39,7 @@ import {
   ChevronUp,
   Bot,
 } from 'lucide-react';
-import { fetchModels, pullModel, deleteModel, showModel } from '../../services/ollamaService';
+import { fetchModels, pullModel, deleteModel, showModel, fetchRunningModels, setModelLoaded } from '../../services/ollamaService';
 import { showToast } from '../../utils/toast';
 import { showCustomConfirm } from '../../utils/dialogService';
 
@@ -60,6 +60,9 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
   const theme = useTheme();
   const [tab, setTab] = useState(0);
   const [models, setModels] = useState([]);
+  const [runningModels, setRunningModels] = useState<any[]>([]);
+  const [modelBusy, setModelBusy] = useState('');
+  const [runtimeError, setRuntimeError] = useState('');
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [expandedModel, setExpandedModel] = useState(null);
@@ -89,6 +92,24 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
       loadModels();
     }
   }, [open, loadModels]);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    const refresh = () => fetchRunningModels(ollamaUrl).then((items) => { if (alive) { setRunningModels(items); setRuntimeError(''); } }).catch((e) => alive && setRuntimeError(e.message));
+    refresh(); const timer = setInterval(refresh, 5000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [open, ollamaUrl]);
+  async function toggleLoaded(name: string, loaded: boolean) {
+    setModelBusy(name); setRuntimeError('');
+    try {
+      if (!loaded) window.dispatchEvent(new Event('llm-stop-stream'));
+      await setModelLoaded({ model: name, loaded, ollamaUrl, signal: undefined });
+      setRunningModels(await fetchRunningModels(ollamaUrl));
+      showToast(loaded ? `${name} loaded into memory` : `${name} unload requested`, 'success');
+    } catch (e: any) { setRuntimeError(e.message); }
+    finally { setModelBusy(''); }
+  }
 
   const filteredModels = search.trim()
     ? models.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
@@ -237,6 +258,8 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
         </Box>
       </DialogTitle>
 
+      {runtimeError && <Typography color="error" sx={{ px: 3 }}>{runtimeError}</Typography>}
+      <Typography variant="caption" color="text.secondary" sx={{ px: 3 }}>Loaded: {runningModels.map((m) => m.name).join(', ') || 'none'}. Stop unloads memory; downloaded files are kept.</Typography>
       {loading && <LinearProgress sx={{ mx: 3 }} />}
 
       <Box sx={{ px: 3 }}>
@@ -311,14 +334,15 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                           '&:hover': {
                             bgcolor: alpha(theme.palette.primary.main, 0.06),
                           },
-                          px: 2,
+                          pl: 2,
+                          pr: 17,
                           py: 1.25,
                         }}
                       >
                         <ListItemText
                           primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
                                 {model.name}
                               </Typography>
                               <Chip
@@ -340,6 +364,9 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                           }
                         />
                         <ListItemSecondaryAction>
+                          <Button size="small" disabled={!!modelBusy} title={runningModels.some((m) => m.name === model.name) ? "Stop active generation in this app and unload model memory" : "Load this model into memory"} onClick={() => toggleLoaded(model.name, !runningModels.some((m) => m.name === model.name))}>
+                            {modelBusy === model.name ? 'Working…' : runningModels.some((m) => m.name === model.name) ? 'Stop model' : 'Load model'}
+                          </Button>
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
                             <IconButton
                               size="small"
@@ -534,7 +561,7 @@ export default function ModelManagerDialog({ open, onClose, ollamaUrl, onModelsC
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                     {pullProgress.percent >= 100 ? (
                       <CheckCircle2 size={18} color={theme.palette.success.main} />
                     ) : (
