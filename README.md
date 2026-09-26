@@ -331,6 +331,14 @@ localllmmind/
 
 ---
 
+## 🎬 Product Demo Video & Screenshots
+
+<p align="center">
+  <video src="docs/assets/demo_video.mp4" width="100%" controls autoplay loop muted style="border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);"></video>
+</p>
+
+- **Interactive Walkthrough Video**: [`docs/assets/demo_video.mp4`](docs/assets/demo_video.mp4) *(Full desktop walkthrough: Developer Chat, Autonomous Agent Mode, GitHub linking & remote sync, Theme Studio, and Multimodal Vision)*
+
 ### 🖼️ Real Feature Scenarios & High-Resolution Screenshots
 
 | # | Scenario / Feature | Real Screenshot | Description |

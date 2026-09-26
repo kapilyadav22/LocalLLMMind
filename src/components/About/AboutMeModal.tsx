@@ -23,6 +23,7 @@ import {
   Sparkles,
   Container,
   Terminal,
+  Globe,
 } from 'lucide-react';
 import BrandText from '../common/BrandText';
 import {
@@ -41,6 +42,8 @@ import { showToast } from '../../utils/toast';
 // Custom Brand Icons for Social Profiles
 function BrandSocialIcon({ id, size = 18, color = 'currentColor' }) {
   switch (id) {
+    case 'website':
+      return <Globe size={size} color={color} />;
     case 'github':
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>

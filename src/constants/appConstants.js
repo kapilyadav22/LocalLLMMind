@@ -8,6 +8,7 @@ export const DEVELOPER_HANDLE = '@kapilyadav22';
 export const DEVELOPER_TITLE = 'Software Engineer | Delhi | DTU';
 export const DEVELOPER_BIO = 'Software Engineer | Delhi | DTU';
 export const DEVELOPER_WATERMARK = 'Crafted by Kapil Yadav';
+export const DEVELOPER_WEBSITE = 'https://kapilyadav.co.in';
 export const DEVELOPER_AVATAR = 'https://ugc.production.linktr.ee/cfb54208-2c22-4dab-b740-fea928171d17_IMG-20230319-204347-411.jpeg?io=true&size=avatar-v3_0';
 
 export const APP_NAME = 'LocalLLMMind';
@@ -19,6 +20,14 @@ export const DOCKERHUB_IMAGE_URL = 'https://hub.docker.com/r/kapilyadav22/locall
 export const DOCKERHUB_PULL_CMD = 'docker pull kapilyadav22/localllmmind';
 
 export const SOCIAL_PROFILES = [
+  {
+    id: 'website',
+    name: 'Website',
+    url: 'https://kapilyadav.co.in',
+    handle: 'kapilyadav.co.in',
+    color: '#0ea5e9',
+    badge: 'Portfolio & Work',
+  },
   {
     id: 'github',
     name: 'GitHub',
