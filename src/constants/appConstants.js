@@ -223,6 +223,16 @@ export const DEFAULT_SHORTCUTS = [
     customizable: true,
   },
   {
+    id: 'workspace_notes',
+    name: 'Workspace Notes & Scratchpad',
+    description: 'Toggle side-by-side markdown notes drawer',
+    key: 'n',
+    modifiers: ['ctrlOrCmd', 'shift'],
+    category: 'Navigation',
+    actionType: 'workspace_notes',
+    customizable: true,
+  },
+  {
     id: 'open_model_manager',
     name: 'Manage Models',
     description: 'Pull, delete, and inspect Ollama models',

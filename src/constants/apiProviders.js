@@ -80,9 +80,11 @@ export const PROVIDER_CONFIGS = [
     keyDocumentationUrl: 'https://typesafe.ai',
     badgeColor: '#ec4899',
     models: [
-      { id: 'jev-latest', name: 'Jev Latest', context: '64K', description: 'Sub-100ms structured decision & classification' },
-      { id: 'jev-1.13.0', name: 'Jev 1.13.0', context: '64K', description: 'Stable pinned enterprise decision model' },
-      { id: 'jev-1', name: 'Jev 1', context: '64K', description: 'TypeSafe Jev model family' },
+      { id: 'typesafe/jev-1.13', name: 'Jev 1.13', context: '64K', description: 'Fast structured decision model (Recommended, ~$0.042/1M tokens)' },
+      { id: 'typesafe/jev-latest', name: 'Jev Latest', context: '64K', description: 'Sub-100ms structured decision & classification' },
+      { id: 'typesafe/jev-1', name: 'Jev 1', context: '64K', description: 'TypeSafe Jev family foundation classifier' },
+      { id: 'jev-latest', name: 'Jev Latest (Alias)', context: '64K', description: 'Sub-100ms structured decision & classification' },
+      { id: 'jev-1.13.0', name: 'Jev 1.13.0 (Legacy alias)', context: '64K', description: 'Pinned enterprise decision model' },
     ],
   },
   {

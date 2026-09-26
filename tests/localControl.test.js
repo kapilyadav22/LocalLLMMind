@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createLocalControl, isLocalRequest } from '../server/localControl.js';
 
-function request(handler, route, { method = 'GET', body, token, origin = 'http://localhost:5173', host = 'localhost:5173', address = '127.0.0.1' } = {}) {
+function request(handler, route, { method = 'GET', body, token, origin = 'http://localhost:2210', host = 'localhost:2210', address = '127.0.0.1' } = {}) {
   return new Promise((resolve, reject) => {
     const req = Readable.from(body === undefined ? [] : [Buffer.from(JSON.stringify(body))]);
     req.url = route; req.method = method; req.socket = { remoteAddress: address };
@@ -26,7 +26,7 @@ async function fixture(t, overrides = {}) {
   return { handler, root, token: status.data.token, opens };
 }
 test('host, origin, remote address and fetch metadata protect local actions', () => {
-  const req = { headers: { host: 'localhost:5173', origin: 'http://localhost:5173' }, socket: { remoteAddress: '::1' } };
+  const req = { headers: { host: 'localhost:2210', origin: 'http://localhost:2210' }, socket: { remoteAddress: '::1' } };
   assert.equal(isLocalRequest(req), true);
   for (const headers of [{ host: 'evil.example', origin: 'http://evil.example' }, { origin: 'https://evil.example' }, { 'sec-fetch-site': 'cross-site' }]) assert.equal(isLocalRequest({ ...req, headers: { ...req.headers, ...headers } }), false);
   assert.equal(isLocalRequest({ ...req, socket: { remoteAddress: '192.168.1.5' } }), false);

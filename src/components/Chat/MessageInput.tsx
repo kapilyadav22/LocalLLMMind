@@ -22,19 +22,36 @@ import {
   X,
   Sparkles,
   Globe,
+  ListPlus,
+  Clock,
+  BookOpen,
+  Hash,
+  Phone,
 } from 'lucide-react';
 import ModelSelector from '../common/ModelSelector';
 import SlashCommandPopover from './SlashCommandPopover';
 import PromptLibraryDialog from './PromptLibraryDialog';
+import KnowledgeTagPopover from './KnowledgeTagPopover';
+import KnowledgeBaseDialog from '../Knowledge/KnowledgeBaseDialog';
 import { useChatStore } from '../../store/chatContext';
 import { useVoiceInput } from '../../hooks/useAudio';
 import { DEVELOPER_NAME, APP_SHORT_NAME } from '../../constants/appConstants';
 import { loadAllPrompts } from '../../utils/promptStorage';
+import { loadKnowledgeDocuments, KnowledgeDocument } from '../../utils/knowledgeStorage';
 import { processImageFile, formatImageSize } from '../../utils/imageUtils';
 import { isDocumentFile, readDocumentFile, formatDocumentsForPrompt } from '../../utils/documentUtils';
 import { showToast } from '../../utils/toast';
 
-export default function MessageInput({ onSend, onStop, disabled, replyTo = null, onCancelReply = null, onOpenSettings = null }) {
+export default function MessageInput({
+  onSend,
+  onStop,
+  disabled,
+  replyTo = null,
+  onCancelReply = null,
+  onOpenSettings = null,
+  queuedCount = 0,
+  onOpenVoiceMode = null,
+}: any) {
   const [input, setInput] = useState('');
   const [interimText, setInterimText] = useState('');
   const inputRef = useRef(null);
@@ -50,13 +67,27 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
   const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
+  // Local RAG Knowledge base state
+  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDocument[]>(() => loadKnowledgeDocuments());
+  const [knowledgePopoverOpen, setKnowledgePopoverOpen] = useState(false);
+  const [knowledgeSelectedIndex, setKnowledgeSelectedIndex] = useState(0);
+  const [knowledgeDialogOpen, setKnowledgeDialogOpen] = useState(false);
+  const [attachedKnowledgeTags, setAttachedKnowledgeTags] = useState<string[]>([]);
+
   // Sync prompts on change/import
   useEffect(() => {
     const handlePromptsUpdated = () => {
       setAllPrompts(loadAllPrompts());
     };
+    const handleKnowledgeUpdated = () => {
+      setKnowledgeDocs(loadKnowledgeDocuments());
+    };
     window.addEventListener('localllmmind-prompts-updated', handlePromptsUpdated);
-    return () => window.removeEventListener('localllmmind-prompts-updated', handlePromptsUpdated);
+    window.addEventListener('localllmmind-knowledge-updated', handleKnowledgeUpdated);
+    return () => {
+      window.removeEventListener('localllmmind-prompts-updated', handlePromptsUpdated);
+      window.removeEventListener('localllmmind-knowledge-updated', handleKnowledgeUpdated);
+    };
   }, []);
 
   // Voice input
@@ -232,6 +263,62 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
     }
   }, [slashMatch, slashMatchingPrompts.length]);
 
+  // Match knowledge tag at typing cursor: e.g. "#" or "#api"
+  const knowledgeMatch = useMemo(() => {
+    const match = input.match(/(?:^|\s)#([a-zA-Z0-9_-]*)$/);
+    if (!match) return null;
+    return {
+      query: match[1].toLowerCase(),
+      fullMatch: match[0],
+    };
+  }, [input]);
+
+  const matchingKnowledgeDocs = useMemo(() => {
+    if (!knowledgeMatch) return [];
+    const q = knowledgeMatch.query;
+    if (!q) return knowledgeDocs;
+    return knowledgeDocs.filter(
+      (d) =>
+        d.tag.toLowerCase().includes(q) ||
+        d.title.toLowerCase().includes(q)
+    );
+  }, [knowledgeMatch, knowledgeDocs]);
+
+  useEffect(() => {
+    if (knowledgeMatch && matchingKnowledgeDocs.length > 0) {
+      setKnowledgePopoverOpen(true);
+      setKnowledgeSelectedIndex(0);
+    } else {
+      setKnowledgePopoverOpen(false);
+    }
+  }, [knowledgeMatch, matchingKnowledgeDocs.length]);
+
+  const handleSelectKnowledgeDoc = (doc: KnowledgeDocument) => {
+    if (!doc) return;
+    if (knowledgeMatch) {
+      const replaced = input.replace(/(?:^|\s)#([a-zA-Z0-9_-]*)$/, (m) => {
+        const prefix = m.startsWith(' ') ? ' ' : '';
+        return `${prefix}#${doc.tag} `;
+      });
+      setInput(replaced);
+    } else {
+      setInput((prev) => (prev ? `${prev} #${doc.tag} ` : `#${doc.tag} `));
+    }
+    setAttachedKnowledgeTags((prev) => Array.from(new Set([...prev, doc.tag])));
+    setKnowledgePopoverOpen(false);
+
+    setTimeout(() => {
+      if (inputRef.current) {
+        const textarea = (inputRef.current as HTMLElement).querySelector('textarea');
+        if (textarea) {
+          textarea.focus();
+          textarea.selectionStart = textarea.value.length;
+          textarea.selectionEnd = textarea.value.length;
+        }
+      }
+    }, 50);
+  };
+
   const handleSelectPrompt = (prompt) => {
     if (!prompt) return;
     if (slashMatch) {
@@ -248,7 +335,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
     // Focus input and move cursor to end
     setTimeout(() => {
       if (inputRef.current) {
-        const textarea = inputRef.current.querySelector('textarea');
+        const textarea = (inputRef.current as HTMLElement).querySelector('textarea');
         if (textarea) {
           textarea.focus();
           textarea.selectionStart = textarea.value.length;
@@ -264,6 +351,7 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
     if (!state.isConnected) return '⚠ Ollama is not connected — check Settings';
     if (state.models.length === 0) return '⚠ No models found — pull a model first';
     if (!currentModel) return 'Select a model to start chatting…';
+    if (state.isStreaming) return 'Type a prompt to queue (Enter to queue)…';
     if (attachedDocuments.length > 0) return 'Ask a question about the attached document(s)…';
     if (attachedImages.length > 0) return 'Ask a question about the attached image(s)…';
     return 'Send a message (type / for commands, or drop images & files)…';
@@ -273,7 +361,8 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if ((!text && attachedImages.length === 0 && attachedDocuments.length === 0) || disabled || isInputDisabled) return;
+    if ((!text && attachedImages.length === 0 && attachedDocuments.length === 0) || isInputDisabled) return;
+    if (disabled && !state.isStreaming) return;
     // Stop listening if active
     if (isListening) toggleListening();
     setInterimText('');
@@ -288,20 +377,51 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
       promptPayload = promptPayload + formatDocumentsForPrompt(attachedDocuments);
     }
 
-    onSend(promptPayload, currentModel, attachedImages, { webSearch: webSearchEnabled });
+    onSend(promptPayload, currentModel, attachedImages, {
+      webSearch: webSearchEnabled,
+      knowledgeTags: attachedKnowledgeTags,
+    });
     setInput('');
     setAttachedImages([]);
     setAttachedDocuments([]);
+    setAttachedKnowledgeTags([]);
     onCancelReply?.();
 
     // Reset textarea height
     if (inputRef.current) {
-      const textarea = inputRef.current.querySelector('textarea');
+      const textarea = (inputRef.current as HTMLElement).querySelector('textarea');
       if (textarea) textarea.style.height = 'auto';
     }
-  }, [input, attachedImages, attachedDocuments, disabled, isInputDisabled, isListening, toggleListening, onSend, currentModel, replyTo, onCancelReply, webSearchEnabled]);
+  }, [input, attachedImages, attachedDocuments, attachedKnowledgeTags, disabled, isInputDisabled, isListening, toggleListening, onSend, currentModel, replyTo, onCancelReply, webSearchEnabled]);
 
   const handleKeyDown = (e) => {
+    // Handle keyboard navigation inside the knowledge tag popover
+    if (knowledgePopoverOpen && matchingKnowledgeDocs.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setKnowledgeSelectedIndex((prev) => (prev + 1) % matchingKnowledgeDocs.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setKnowledgeSelectedIndex((prev) => (prev - 1 + matchingKnowledgeDocs.length) % matchingKnowledgeDocs.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const selected = matchingKnowledgeDocs[knowledgeSelectedIndex] || matchingKnowledgeDocs[0];
+        if (selected) {
+          handleSelectKnowledgeDoc(selected);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setKnowledgePopoverOpen(false);
+        return;
+      }
+    }
+
     // Handle keyboard navigation inside the slash command popover
     if (slashPopoverOpen && slashMatchingPrompts.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -460,6 +580,19 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
           selectedIndex={slashSelectedIndex}
           onSelect={handleSelectPrompt}
         />
+
+        {/* Knowledge Tag Popover (#tag) */}
+        <KnowledgeTagPopover
+          open={knowledgePopoverOpen}
+          documents={matchingKnowledgeDocs}
+          selectedIndex={knowledgeSelectedIndex}
+          onSelect={handleSelectKnowledgeDoc}
+          onOpenKnowledgeStudio={() => {
+            setKnowledgePopoverOpen(false);
+            setKnowledgeDialogOpen(true);
+          }}
+          query={knowledgeMatch?.query || ''}
+        />
         {/* Drag & Drop Visual Overlay */}
         {isDragging && (
           <Box
@@ -523,6 +656,40 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
             <IconButton size="small" onClick={onCancelReply} sx={{ p: 0.5, color: 'text.secondary' }}>
               <X size={13} />
             </IconButton>
+          </Box>
+        )}
+
+        {/* Attached Knowledge Tags Strip */}
+        {attachedKnowledgeTags.length > 0 && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              px: 2,
+              pt: 1.5,
+              pb: 0.5,
+            }}
+          >
+            {attachedKnowledgeTags.map((tag) => (
+              <Chip
+                key={tag}
+                icon={<BookOpen size={13} style={{ marginLeft: 6 }} />}
+                label={`#${tag}`}
+                onDelete={() => setAttachedKnowledgeTags((prev) => prev.filter((t) => t !== tag))}
+                size="small"
+                color="secondary"
+                sx={{
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.secondary.main, 0.12),
+                  border: '1px solid',
+                  borderColor: alpha(theme.palette.secondary.main, 0.35),
+                  fontWeight: 700,
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                }}
+              />
+            ))}
           </Box>
         )}
 
@@ -737,6 +904,33 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
               </IconButton>
             </Tooltip>
 
+            {/* Local RAG & Document Knowledge Base Grounding button */}
+            <Tooltip
+              title={
+                attachedKnowledgeTags.length > 0
+                  ? `Knowledge Base Grounding: ACTIVE (#${attachedKnowledgeTags.join(', #')})`
+                  : 'Knowledge Base & Document Grounding (#tag)'
+              }
+            >
+              <IconButton
+                size="small"
+                onClick={() => setKnowledgeDialogOpen(true)}
+                sx={{
+                  color: attachedKnowledgeTags.length > 0 ? 'secondary.main' : 'text.secondary',
+                  bgcolor: attachedKnowledgeTags.length > 0 ? alpha(theme.palette.secondary.main, 0.12) : 'transparent',
+                  border: attachedKnowledgeTags.length > 0 ? `1px solid ${alpha(theme.palette.secondary.main, 0.35)}` : '1px solid transparent',
+                  p: '6px',
+                  '&:hover': {
+                    color: 'secondary.main',
+                    bgcolor: alpha(theme.palette.secondary.main, 0.15),
+                  },
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <BookOpen size={16} />
+              </IconButton>
+            </Tooltip>
+
             {/* Attach Image or Document button */}
             <Tooltip title="Attach images or documents (code, data, text)">
               <span>
@@ -794,39 +988,82 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
               </Tooltip>
             )}
 
-            {/* Send / Stop button */}
-            {state.isStreaming ? (
-              <Tooltip title="Stop generating">
-                <IconButton
-                  onClick={onStop}
-                  size="small"
-                  sx={{
-                    color: '#fff',
-                    bgcolor: 'error.main',
-                    p: '7px',
-                    '&:hover': {
-                      bgcolor: 'error.dark',
-                    },
-                  }}
-                >
-                  <Square size={14} />
-                </IconButton>
+            {/* Voice Mode (Hands-Free Duplex) */}
+            {isMicSupported && onOpenVoiceMode && (
+              <Tooltip title="Voice Mode — Hands-free duplex conversation">
+                <span>
+                  <IconButton
+                    onClick={onOpenVoiceMode}
+                    disabled={isInputDisabled}
+                    sx={{
+                      color: 'text.secondary',
+                      p: '6px',
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.12),
+                        color: 'primary.main',
+                      },
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Phone size={16} />
+                  </IconButton>
+                </span>
               </Tooltip>
+            )}
+
+            {/* Send / Queue / Stop buttons */}
+            {state.isStreaming ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                {(input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && (
+                  <Tooltip title="Queue message (Enter) — Will send automatically when current response finishes">
+                    <IconButton
+                      onClick={handleSend}
+                      size="small"
+                      sx={{
+                        color: '#fff',
+                        bgcolor: 'primary.main',
+                        p: '7px',
+                        '&:hover': {
+                          bgcolor: 'primary.dark',
+                        },
+                      }}
+                    >
+                      <ListPlus size={15} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Tooltip title="Stop generating (Esc)">
+                  <IconButton
+                    onClick={onStop}
+                    size="small"
+                    sx={{
+                      color: '#fff',
+                      bgcolor: 'error.main',
+                      p: '7px',
+                      '&:hover': {
+                        bgcolor: 'error.dark',
+                      },
+                    }}
+                  >
+                    <Square size={14} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             ) : (
               <Tooltip title={isInputDisabled ? 'Connect to Ollama first' : 'Send message (Enter)'}>
                 <span>
                   <IconButton
                     onClick={handleSend}
-                    disabled={(!input.trim() && attachedImages.length === 0) || disabled || isInputDisabled}
+                    disabled={(!input.trim() && attachedImages.length === 0 && attachedDocuments.length === 0) || disabled || isInputDisabled}
                     size="small"
                     sx={{
-                      color: (input.trim() || attachedImages.length > 0) && !isInputDisabled ? '#fff' : 'text.secondary',
-                      bgcolor: (input.trim() || attachedImages.length > 0) && !isInputDisabled
+                      color: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isInputDisabled ? '#fff' : 'text.secondary',
+                      bgcolor: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isInputDisabled
                         ? 'primary.main'
                         : 'transparent',
                       p: '7px',
                       '&:hover': {
-                        bgcolor: (input.trim() || attachedImages.length > 0) && !isInputDisabled
+                        bgcolor: (input.trim() || attachedImages.length > 0 || attachedDocuments.length > 0) && !isInputDisabled
                           ? 'primary.dark'
                           : alpha(theme.palette.primary.main, 0.1),
                       },
@@ -853,6 +1090,18 @@ export default function MessageInput({ onSend, onStop, disabled, replyTo = null,
         prompts={allPrompts}
         onSelectPrompt={handleSelectPrompt}
       />
+
+      {/* Knowledge Base Dialog */}
+      {knowledgeDialogOpen && (
+        <KnowledgeBaseDialog
+          open={knowledgeDialogOpen}
+          onClose={() => setKnowledgeDialogOpen(false)}
+          onSelectTag={(tag) => {
+            setAttachedKnowledgeTags((prev) => Array.from(new Set([...prev, tag])));
+            setInput((prev) => (prev ? `${prev} #${tag} ` : `#${tag} `));
+          }}
+        />
+      )}
 
       <Box sx={{ textAlign: 'center', mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', opacity: 0.65 }}>

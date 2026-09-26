@@ -17,8 +17,16 @@ import {
   ChevronRight,
   Globe,
   ExternalLink,
+  Brain,
+  FileText,
+  BookOpen,
+  Hash,
 } from 'lucide-react';
 import MarkdownRenderer from '../common/MarkdownRenderer';
+import GenerationStatsDialog from './GenerationStatsDialog';
+import { addMemory } from '../../utils/memoryStorage';
+import { appendContentToActiveNote } from '../../utils/notesStorage';
+import { showToast } from '../../utils/toast';
 
 const MessageBubble = memo(function MessageBubble({
   message,
@@ -38,6 +46,7 @@ const MessageBubble = memo(function MessageBubble({
   const [copied, setCopied] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedCitation, setSelectedCitation] = useState<any | null>(null);
   const isUser = message.role === 'user';
   const isSearchMatch = Boolean(
     searchQuery.trim() &&
@@ -53,6 +62,33 @@ const MessageBubble = memo(function MessageBubble({
       console.error('Failed to copy message:', e);
     }
   };
+
+  const [savedToMemory, setSavedToMemory] = useState(false);
+
+  const handleSaveToMemory = () => {
+    if (!message.content?.trim()) return;
+    const added = addMemory(message.content.trim(), 'chat');
+    if (added) {
+      setSavedToMemory(true);
+      showToast('Saved to Long-Term Memory', 'success');
+      setTimeout(() => setSavedToMemory(false), 2000);
+    } else {
+      showToast('This item is already saved in Long-Term Memory', 'info');
+    }
+  };
+
+  const [appendedToNotes, setAppendedToNotes] = useState(false);
+
+  const handleAppendToNotes = () => {
+    if (!message.content?.trim()) return;
+    const sourceTitle = isUser ? 'User Prompt' : 'AI Assistant';
+    appendContentToActiveNote(message.content.trim(), sourceTitle);
+    setAppendedToNotes(true);
+    showToast('Appended to Workspace Notes', 'success');
+    setTimeout(() => setAppendedToNotes(false), 2000);
+  };
+
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
 
   return (
     <Box
@@ -184,52 +220,51 @@ const MessageBubble = memo(function MessageBubble({
                   })}
                 </Box>
               )}
-              {/* Web Grounding Sources Banner */}
-              {message.webSources && message.webSources.length > 0 && (
+              {/* Knowledge Base Grounding Sources Banner */}
+              {message.knowledgeCitations && message.knowledgeCitations.length > 0 && (
                 <Box
                   sx={{
                     mb: 1.5,
                     p: 1.25,
                     borderRadius: 2.5,
-                    bgcolor: alpha('#00e5ff', 0.06),
+                    bgcolor: alpha(theme.palette.secondary.main, 0.08),
                     border: '1px solid',
-                    borderColor: alpha('#00e5ff', 0.2),
+                    borderColor: alpha(theme.palette.secondary.main, 0.25),
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-                    <Globe size={14} color={theme.palette.primary.main} />
+                    <BookOpen size={14} color={theme.palette.secondary.main} />
                     <Typography
                       variant="caption"
                       sx={{
-                        fontWeight: 600,
-                        color: 'primary.main',
+                        fontWeight: 700,
+                        color: 'secondary.main',
                         letterSpacing: '0.04em',
                         fontSize: '0.72rem',
                         textTransform: 'uppercase',
                       }}
                     >
-                      Grounded Web Sources ({message.webSources.length})
+                      Knowledge Base Grounding ({message.knowledgeCitations.length} excerpts)
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                    {message.webSources.map((source, i) => (
+                    {message.knowledgeCitations.map((cit, i) => (
                       <Chip
                         key={i}
-                        component="a"
-                        href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         clickable
+                        onClick={() => setSelectedCitation(cit)}
                         size="small"
-                        label={`[${i + 1}] ${source.title}`}
-                        icon={<ExternalLink size={11} />}
+                        label={`#${cit.tag}: "${cit.documentTitle}" (chunk ${cit.chunkIndex + 1})`}
+                        icon={<Hash size={11} />}
                         sx={{
-                          maxWidth: 240,
+                          maxWidth: 320,
                           fontSize: '0.72rem',
-                          bgcolor: alpha(theme.palette.background.paper, 0.7),
+                          bgcolor: alpha(theme.palette.background.paper, 0.8),
                           borderRadius: 1.5,
                           border: '1px solid',
-                          borderColor: 'divider',
+                          borderColor: alpha(theme.palette.secondary.main, 0.3),
+                          fontWeight: 600,
+                          cursor: 'pointer',
                         }}
                       />
                     ))}
@@ -296,6 +331,58 @@ const MessageBubble = memo(function MessageBubble({
                 </Box>
               )}
 
+              {/* Knowledge Base Grounding Sources Banner for Assistant Response */}
+              {message.knowledgeCitations && message.knowledgeCitations.length > 0 && (
+                <Box
+                  sx={{
+                    mb: 1.5,
+                    p: 1.25,
+                    borderRadius: 2.5,
+                    bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                    border: '1px solid',
+                    borderColor: alpha(theme.palette.secondary.main, 0.25),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
+                    <BookOpen size={14} color={theme.palette.secondary.main} />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        color: 'secondary.main',
+                        letterSpacing: '0.04em',
+                        fontSize: '0.72rem',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Knowledge Base Grounding ({message.knowledgeCitations.length} excerpts cited)
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {message.knowledgeCitations.map((cit, i) => (
+                      <Chip
+                        key={i}
+                        clickable
+                        onClick={() => setSelectedCitation(cit)}
+                        size="small"
+                        label={`#${cit.tag}: "${cit.documentTitle}" (chunk ${cit.chunkIndex + 1})`}
+                        icon={<Hash size={11} />}
+                        sx={{
+                          maxWidth: 320,
+                          fontSize: '0.72rem',
+                          bgcolor: alpha(theme.palette.background.paper, 0.8),
+                          borderRadius: 1.5,
+                          border: '1px solid',
+                          borderColor: alpha(theme.palette.secondary.main, 0.3),
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
               <MarkdownRenderer content={message.content} />
               {isStreaming && (
                 <Box
@@ -320,45 +407,55 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </Box>
 
-        {/* Performance Metrics Badge */}
+        {/* Performance Metrics Badge & Inspector */}
         {!isUser && message.metrics && !isStreaming && (
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 0.75,
-              mt: 1.25,
-              mb: 0.25,
-              px: 1.25,
-              py: 0.35,
-              borderRadius: 2,
-              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-              border: '1px solid',
-              borderColor: 'divider',
-              fontSize: '0.72rem',
-              color: 'text.secondary',
-              fontFamily: 'monospace',
-            }}
-          >
-            <Box component="span" sx={{ color: 'warning.main', fontSize: '0.8rem', lineHeight: 1 }}>
-              ⚡
+          <Tooltip title="Click to view detailed token breakdown & latency inspector">
+            <Box
+              onClick={() => setStatsModalOpen(true)}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.75,
+                mt: 1.25,
+                mb: 0.25,
+                px: 1.25,
+                py: 0.4,
+                borderRadius: 2,
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                border: '1px solid',
+                borderColor: 'divider',
+                fontSize: '0.72rem',
+                color: 'text.secondary',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  borderColor: 'warning.main',
+                  bgcolor: alpha(theme.palette.warning.main, 0.08),
+                  color: 'text.primary',
+                },
+              }}
+            >
+              <Box component="span" sx={{ color: 'warning.main', fontSize: '0.8rem', lineHeight: 1 }}>
+                ⚡
+              </Box>
+              <Typography variant="caption" sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600 }}>
+                {message.metrics.tokPerSec} tok/s
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.72rem', opacity: 0.4 }}>•</Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                {message.metrics.evalCount} tokens ({message.metrics.duration}s)
+              </Typography>
+              {message.metrics.model && (
+                <>
+                  <Typography variant="caption" sx={{ fontSize: '0.72rem', opacity: 0.4 }}>•</Typography>
+                  <Typography variant="caption" sx={{ fontSize: '0.72rem', color: 'primary.main', fontWeight: 500 }}>
+                    {message.metrics.model}
+                  </Typography>
+                </>
+              )}
             </Box>
-            <Typography variant="caption" sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600 }}>
-              {message.metrics.tokPerSec} tok/s
-            </Typography>
-            <Typography variant="caption" sx={{ fontSize: '0.72rem', opacity: 0.4 }}>•</Typography>
-            <Typography variant="caption" sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-              {message.metrics.evalCount} tokens ({message.metrics.duration}s)
-            </Typography>
-            {message.metrics.model && (
-              <>
-                <Typography variant="caption" sx={{ fontSize: '0.72rem', opacity: 0.4 }}>•</Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.72rem', color: 'primary.main', fontWeight: 500 }}>
-                  {message.metrics.model}
-                </Typography>
-              </>
-            )}
-          </Box>
+          </Tooltip>
         )}
 
         {/* Actions */}
@@ -450,6 +547,34 @@ const MessageBubble = memo(function MessageBubble({
               }}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
+            </IconButton>
+          </Tooltip>
+
+          {/* Save to Long-Term Memory */}
+          <Tooltip title={savedToMemory ? 'Saved to Memory!' : 'Save to Long-Term Memory'}>
+            <IconButton
+              size="small"
+              onClick={handleSaveToMemory}
+              sx={{
+                color: savedToMemory ? 'info.main' : 'text.secondary',
+                '&:hover': { color: 'info.main', bgcolor: alpha(theme.palette.info.main, 0.1) },
+              }}
+            >
+              {savedToMemory ? <Check size={14} /> : <Brain size={14} />}
+            </IconButton>
+          </Tooltip>
+
+          {/* Append to Workspace Notes */}
+          <Tooltip title={appendedToNotes ? 'Appended to Notes!' : 'Append to Workspace Notes'}>
+            <IconButton
+              size="small"
+              onClick={handleAppendToNotes}
+              sx={{
+                color: appendedToNotes ? 'primary.main' : 'text.secondary',
+                '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) },
+              }}
+            >
+              {appendedToNotes ? <Check size={14} /> : <FileText size={14} />}
             </IconButton>
           </Tooltip>
 
@@ -590,6 +715,63 @@ const MessageBubble = memo(function MessageBubble({
           />
         )}
       </Dialog>
+
+      {/* Knowledge Base Citation Inspector Dialog */}
+      {selectedCitation && (
+        <Dialog
+          open={Boolean(selectedCitation)}
+          onClose={() => setSelectedCitation(null)}
+          maxWidth="sm"
+          fullWidth
+          slotProps={{
+            paper: {
+              sx: {
+                borderRadius: 3,
+                bgcolor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'divider',
+                p: 2,
+              },
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                label={`#${selectedCitation.tag}`}
+                color="secondary"
+                size="small"
+                sx={{ fontWeight: 700, fontFamily: 'monospace' }}
+              />
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {selectedCitation.documentTitle}
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setSelectedCitation(null)}>
+              <X size={16} />
+            </IconButton>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+            Section {selectedCitation.chunkIndex + 1} • Retrieval Relevance Score: {selectedCitation.score ? selectedCitation.score.toFixed(1) : 'High'}
+          </Typography>
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.background.paper, 0.5),
+              border: '1px solid',
+              borderColor: 'divider',
+              maxHeight: '50vh',
+              overflowY: 'auto',
+              fontFamily: 'monospace',
+              fontSize: '0.8rem',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {selectedCitation.text}
+          </Box>
+        </Dialog>
+      )}
     </Box>
   );
 });

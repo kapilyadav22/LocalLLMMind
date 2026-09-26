@@ -46,6 +46,8 @@ import {
   Folder,
   HardDrive,
   User,
+  FileText,
+  BookOpen,
 } from 'lucide-react';
 import ConnectionStatus from '../common/ConnectionStatus';
 import AppLogo from '../common/AppLogo';
@@ -970,6 +972,24 @@ export default function Sidebar({
               </IconButton>
             </Tooltip>
           )}
+          <Tooltip title="Workspace Notes & Scratchpad (Cmd+Shift+N)">
+            <IconButton
+              onClick={() => window.dispatchEvent(new CustomEvent('localllmmind-open-notes'))}
+              size="small"
+              sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
+            >
+              <FileText size={15} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Local RAG & Knowledge Base (Cmd+Shift+K)">
+            <IconButton
+              onClick={() => window.dispatchEvent(new CustomEvent('localllmmind-open-knowledge'))}
+              size="small"
+              sx={{ color: 'text.secondary', p: '6px', '&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.text.primary, 0.06) } }}
+            >
+              <BookOpen size={15} />
+            </IconButton>
+          </Tooltip>
           {onOpenShortcuts && (
             <Tooltip title="Keyboard shortcuts (Cmd+/)">
               <IconButton

@@ -10,8 +10,9 @@ import {
   useTheme,
   Stack,
   Tooltip,
+  Button,
 } from '@mui/material';
-import { Bot, Key, Cloud, HardDrive, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Bot, Key, Cloud, HardDrive, CheckCircle2, AlertCircle, Zap } from 'lucide-react';
 import { useChatStore } from '../../store/chatContext';
 import { PROVIDERS, PROVIDER_CONFIGS, resolveModelProvider } from '../../constants/apiProviders';
 import { DEFAULT_MODEL_BY_PROVIDER } from '../../constants/models';
@@ -56,7 +57,7 @@ function ModelSelectorComponent({
         id: m.name,
         name: m.name,
         context: m.size ? `${(m.size / 1e9).toFixed(1)}GB` : 'Local',
-        description: 'Locally hosted model in Ollama',
+        // description: 'Locally hosted model in Ollama',
         badge: 'Local',
         badgeColor: '#64748b',
       }));
@@ -322,6 +323,30 @@ function ModelSelectorComponent({
           </Select>
         </FormControl>
 
+        {activeProviderId === PROVIDERS.JEV && (
+          <Tooltip title="Launch Jev Decision Studio (State → Questions → Results)">
+            <Chip
+              icon={<Zap size={13} color="#ec4899" />}
+              label="Decision Studio"
+              size="small"
+              clickable
+              onClick={() => window.dispatchEvent(new CustomEvent('open-jev-studio'))}
+              sx={{
+                height: 28,
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                bgcolor: alpha('#ec4899', 0.12),
+                color: '#ec4899',
+                border: `1px solid ${alpha('#ec4899', 0.3)}`,
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: alpha('#ec4899', 0.22),
+                },
+              }}
+            />
+          </Tooltip>
+        )}
+
         {apiKeyDialogTarget && (
           <ApiKeyDialog
             open={Boolean(apiKeyDialogTarget)}
@@ -436,6 +461,44 @@ function ModelSelectorComponent({
           </Select>
         </FormControl>
       </Box>
+
+      {activeProviderId === PROVIDERS.JEV && (
+        <Box
+          sx={{
+            p: 1.25,
+            borderRadius: 2,
+            bgcolor: alpha('#ec4899', 0.08),
+            border: `1px solid ${alpha('#ec4899', 0.2)}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+          }}
+        >
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: '#ec4899', display: 'block' }}>
+              Jev Structured Decision Studio
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
+              Evaluates State &rarr; Questions &rarr; Bool/Choice/Score.
+            </Typography>
+          </Box>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-jev-studio'))}
+            sx={{
+              fontSize: '0.72rem',
+              textTransform: 'none',
+              borderColor: '#ec4899',
+              color: '#ec4899',
+              '&:hover': { borderColor: '#db2777', bgcolor: alpha('#ec4899', 0.1) },
+            }}
+          >
+            Open Studio
+          </Button>
+        </Box>
+      )}
 
       {apiKeyDialogTarget && (
         <ApiKeyDialog

@@ -35,6 +35,8 @@ import {
   Swords,
   PlusCircle,
   FileText,
+  Clock,
+  ListPlus,
 } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
@@ -47,7 +49,17 @@ const ProjectDialog = lazy(() => import('../Layout/ProjectDialog'));
 const ShareChatDialog = lazy(() => import('./ShareChatDialog'));
 const ArtifactSandboxDrawer = lazy(() => import('./ArtifactSandboxDrawer'));
 const PersonaDialog = lazy(() => import('./PersonaDialog'));
+const MemoryManagerDialog = lazy(() => import('../Settings/MemoryManagerDialog'));
+const NotesDrawer = lazy(() => import('../Notes/NotesDrawer'));
+const VoiceModeOverlay = lazy(() => import('./VoiceModeOverlay'));
 import ApiKeyDialog from '../common/ApiKeyDialog';
+import {
+  loadMemories,
+  formatMemoriesForSystemPrompt,
+  detectPotentialMemories,
+  addMemory,
+} from '../../utils/memoryStorage';
+import { computeGenerationMetrics } from '../../utils/generationMetrics';
 import { useChatStore } from '../../store/chatContext';
 import { generateConversationTitle } from '../../services/ollamaService';
 import { streamAnyChat, MissingApiKeyError } from '../../services/aiProviderService';
@@ -140,6 +152,42 @@ export default function ChatView({ onOpenSettings }) {
   const [arenaModelB, setArenaModelB] = useState('');
   const arenaAbortControllersRef = useRef([]);
 
+  // Message Queueing State (Real-time message flow while streaming)
+  const [queuedMessages, setQueuedMessages] = useState<any[]>([]);
+  const queuedMessagesRef = useRef<any[]>([]);
+  queuedMessagesRef.current = queuedMessages;
+  const handleSendRef = useRef<any>(null);
+
+  const handleRemoveQueuedMessage = useCallback((id: string) => {
+    queuedMessagesRef.current = queuedMessagesRef.current.filter((m) => m.id !== id);
+    setQueuedMessages([...queuedMessagesRef.current]);
+    showToast('Queued message removed', 'info');
+  }, []);
+
+  const handleClearQueue = useCallback(() => {
+    queuedMessagesRef.current = [];
+    setQueuedMessages([]);
+    showToast('Queue cleared', 'info');
+  }, []);
+
+  const checkAndProcessQueue = useCallback(() => {
+    if (queuedMessagesRef.current.length > 0) {
+      const nextItem = queuedMessagesRef.current.shift();
+      setQueuedMessages([...queuedMessagesRef.current]);
+      if (nextItem && handleSendRef.current) {
+        setTimeout(() => {
+          handleSendRef.current(nextItem.text, nextItem.model, nextItem.attachedImages, nextItem.options);
+        }, 120);
+      }
+    }
+  }, []);
+
+  // Clear queue on conversation switch
+  useEffect(() => {
+    queuedMessagesRef.current = [];
+    setQueuedMessages([]);
+  }, [activeConvo?.id]);
+
   // Listen for open artifact events from message code blocks
   useEffect(() => {
     const handleOpenArtifact = (e) => {
@@ -173,6 +221,53 @@ export default function ChatView({ onOpenSettings }) {
     };
     window.addEventListener('localllmmind-personas-updated', handlePersonasUpdated);
     return () => window.removeEventListener('localllmmind-personas-updated', handlePersonasUpdated);
+  }, []);
+
+  // Persistent Long-Term Memory state
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false);
+  const [memoriesCount, setMemoriesCount] = useState(() => loadMemories().length);
+
+  useEffect(() => {
+    const handleMemoriesUpdated = (e: any) => {
+      setMemoriesCount(Array.isArray(e.detail) ? e.detail.length : loadMemories().length);
+    };
+    window.addEventListener('localllmmind-memories-updated', handleMemoriesUpdated);
+    return () => window.removeEventListener('localllmmind-memories-updated', handleMemoriesUpdated);
+  }, []);
+
+  // Workspace Notes & Scratchpad state
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  // Hands-Free Duplex Voice Mode state
+  const [voiceModeOpen, setVoiceModeOpen] = useState(false);
+  const lastAssistantMessage = useMemo(() => {
+    if (!activeMessages || activeMessages.length === 0) return '';
+    for (let i = activeMessages.length - 1; i >= 0; i--) {
+      if (activeMessages[i].role === 'assistant' && activeMessages[i].content) {
+        return activeMessages[i].content;
+      }
+    }
+    return '';
+  }, [activeMessages]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setNotesOpen((prev) => !prev);
+      }
+    };
+
+    const handleOpenNotesEvent = () => {
+      setNotesOpen(true);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('localllmmind-open-notes', handleOpenNotesEvent);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('localllmmind-open-notes', handleOpenNotesEvent);
+    };
   }, []);
 
   const currentPersonaKey = activeConvo?.persona || state.settings.defaultPersona || 'default';
@@ -356,10 +451,15 @@ export default function ChatView({ onOpenSettings }) {
         model: targetModel,
         messages: apiMessages,
         options: {
-          temperature: state.settings.temperature,
-          topP: state.settings.topP,
-          maxTokens: state.settings.maxTokens,
-          contextWindow: state.settings.contextWindow || 4096,
+          temperature: currentPersona?.temperature ?? state.settings.temperature,
+          topP: currentPersona?.topP ?? state.settings.topP,
+          maxTokens: currentPersona?.maxTokens ?? state.settings.maxTokens,
+          contextWindow: currentPersona?.contextWindow ?? state.settings.contextWindow ?? 4096,
+          ...(currentPersona?.repeatPenalty != null && { repeatPenalty: currentPersona.repeatPenalty }),
+          ...(currentPersona?.topK != null && { topK: currentPersona.topK }),
+          ...(currentPersona?.seed != null && currentPersona.seed >= 0 && { seed: currentPersona.seed }),
+          ...(currentPersona?.frequencyPenalty != null && { frequencyPenalty: currentPersona.frequencyPenalty }),
+          ...(currentPersona?.presencePenalty != null && { presencePenalty: currentPersona.presencePenalty }),
         },
         settings: state.settings,
         localModels: state.models,
@@ -381,16 +481,7 @@ export default function ChatView({ onOpenSettings }) {
             });
           }
 
-          let metrics = null;
-          if (parsed.eval_count && parsed.eval_duration) {
-            metrics = {
-              evalCount: parsed.eval_count,
-              evalDuration: parsed.eval_duration,
-              duration: (parsed.eval_duration / 1e9).toFixed(1),
-              tokPerSec: (parsed.eval_count / (parsed.eval_duration / 1e9)).toFixed(1),
-              model: parsed.model || targetModel,
-            };
-          }
+          const metrics = computeGenerationMetrics(parsed, targetModel);
 
           dispatch({
             type: 'FINISH_LAST_MESSAGE',
@@ -398,6 +489,7 @@ export default function ChatView({ onOpenSettings }) {
           });
           dispatch({ type: 'SET_STREAMING', payload: false });
           abortControllerRef.current = null;
+          checkAndProcessQueue();
 
           // Autonomous AI smart auto-titling for new chats
           const targetConvo = state.conversations.find((c) => c.id === currentConvoId);
@@ -446,6 +538,7 @@ export default function ChatView({ onOpenSettings }) {
           });
           dispatch({ type: 'SET_STREAMING', payload: false });
           abortControllerRef.current = null;
+          checkAndProcessQueue();
         },
         signal: abortControllerRef.current.signal,
       });
@@ -517,16 +610,7 @@ export default function ChatView({ onOpenSettings }) {
           if (bufferA) contentA += bufferA;
           bufferA = '';
 
-          let metrics = null;
-          if (parsed.eval_count && parsed.eval_duration) {
-            metrics = {
-              evalCount: parsed.eval_count,
-              evalDuration: parsed.eval_duration,
-              duration: (parsed.eval_duration / 1e9).toFixed(1),
-              tokPerSec: (parsed.eval_count / (parsed.eval_duration / 1e9)).toFixed(1),
-              model: parsed.model || modelA,
-            };
-          }
+          const metrics = computeGenerationMetrics(parsed, modelA);
 
           dispatch({
             type: 'UPDATE_ARENA_MESSAGE',
@@ -572,16 +656,7 @@ export default function ChatView({ onOpenSettings }) {
           if (bufferB) contentB += bufferB;
           bufferB = '';
 
-          let metrics = null;
-          if (parsed.eval_count && parsed.eval_duration) {
-            metrics = {
-              evalCount: parsed.eval_count,
-              evalDuration: parsed.eval_duration,
-              duration: (parsed.eval_duration / 1e9).toFixed(1),
-              tokPerSec: (parsed.eval_count / (parsed.eval_duration / 1e9)).toFixed(1),
-              model: parsed.model || modelB,
-            };
-          }
+          const metrics = computeGenerationMetrics(parsed, modelB);
 
           dispatch({
             type: 'UPDATE_ARENA_MESSAGE',
@@ -615,6 +690,7 @@ export default function ChatView({ onOpenSettings }) {
         clearInterval(flushTimerB);
         arenaAbortControllersRef.current = [];
         dispatch({ type: 'SET_STREAMING', payload: false });
+        checkAndProcessQueue();
       }
     },
     [dispatch, state.settings]
@@ -628,6 +704,34 @@ export default function ChatView({ onOpenSettings }) {
         state.settings.selectedModel ||
         state.models[0]?.name ||
         'gpt-6-astra';
+
+      // If already streaming, enqueue message instead of blocking or discarding
+      if (state.isStreaming) {
+        const cleanImages = (attachedImages || []).map((img: any) => ({
+          id: img.id || String(Date.now() + Math.random()),
+          name: img.name || 'image.png',
+          size: img.size || 0,
+          type: img.type || 'image/png',
+          preview: img.preview || (img.base64 ? `data:image/jpeg;base64,${img.base64}` : ''),
+          base64: img.base64 || (typeof img === 'string' ? img.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '') : ''),
+        }));
+
+        const promptText = text.trim() || (cleanImages.length > 0 ? 'Describe this image.' : '');
+        if (!promptText && cleanImages.length === 0) return;
+
+        const queuedItem = {
+          id: `queue_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          text: promptText,
+          model: targetModel,
+          attachedImages: cleanImages,
+          options,
+          timestamp: Date.now(),
+        };
+        queuedMessagesRef.current.push(queuedItem);
+        setQueuedMessages([...queuedMessagesRef.current]);
+        showToast(`Prompt queued (${queuedMessagesRef.current.length}). Will run automatically.`, 'info');
+        return;
+      }
 
       const { provider } = resolveModelProvider(targetModel, state.models);
       const isOnline = provider !== PROVIDERS.OLLAMA;
@@ -689,12 +793,29 @@ export default function ChatView({ onOpenSettings }) {
       // Clear any quote-reply state
       setReplyToMessage(null);
 
-      // Build history for API with persona system prompt
+      // Auto-extract candidate facts to memory if enabled
+      if (state.settings.enableLongTermMemory !== false && state.settings.autoLearnMemory !== false) {
+        const discovered = detectPotentialMemories(text);
+        if (discovered.length > 0) {
+          discovered.forEach((item) => {
+            const added = addMemory(item, 'learned', convoId);
+            if (added) {
+              showToast(`🧠 Learned: "${item.length > 40 ? item.slice(0, 37) + '...' : item}"`, 'success');
+            }
+          });
+        }
+      }
+
+      // Build history for API with persona system prompt & long-term memory
       const personaKey = activeConvo?.persona || state.settings.defaultPersona || 'default';
       const personaObj = allPersonas.find((p) => p.id === personaKey);
+      const memoryContext = state.settings.enableLongTermMemory !== false
+        ? formatMemoriesForSystemPrompt(loadMemories())
+        : '';
       const effectiveSystemPrompt = [
         personaObj?.systemPrompt,
         state.settings.systemPrompt,
+        memoryContext,
       ].filter(Boolean).join('\n\n');
 
       const apiMessages = [];
@@ -771,8 +892,12 @@ export default function ChatView({ onOpenSettings }) {
       setTimeout(() => scrollToBottom('smooth'), 50);
       await runStream(convoId, targetModel, apiMessages);
     },
-    [state.isConnected, state.settings, state.models, activeConvo, state.activeConversationId, dispatch, runStream, runArenaStream, arenaMode, arenaModelA, arenaModelB]
+    [state.isConnected, state.settings, state.models, activeConvo, state.activeConversationId, dispatch, runStream, runArenaStream, arenaMode, arenaModelA, arenaModelB, state.isStreaming]
   );
+
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
 
   const handleStop = useCallback(() => {
     if (flushTimerRef.current) {
@@ -823,10 +948,14 @@ export default function ChatView({ onOpenSettings }) {
       // Slice messages before this assistant response
       const history = activeConvo.messages.slice(0, assistantIndex);
       const personaKey = activeConvo?.persona || state.settings.defaultPersona || 'default';
-      const personaObj = AI_PERSONAS.find((p) => p.id === personaKey);
+      const personaObj = allPersonas.find((p) => p.id === personaKey);
+      const memoryContext = state.settings.enableLongTermMemory !== false
+        ? formatMemoriesForSystemPrompt(loadMemories())
+        : '';
       const effectiveSystemPrompt = [
         personaObj?.systemPrompt,
         state.settings.systemPrompt,
+        memoryContext,
       ].filter(Boolean).join('\n\n');
 
       const apiMessages = [];
@@ -862,10 +991,14 @@ export default function ChatView({ onOpenSettings }) {
     // Build history up to index, with modified content
     const history = activeConvo.messages.slice(0, index);
     const personaKey = activeConvo?.persona || state.settings.defaultPersona || 'default';
-    const personaObj = AI_PERSONAS.find((p) => p.id === personaKey);
+    const personaObj = allPersonas.find((p) => p.id === personaKey);
+    const memoryContext = state.settings.enableLongTermMemory !== false
+      ? formatMemoriesForSystemPrompt(loadMemories())
+      : '';
     const effectiveSystemPrompt = [
       personaObj?.systemPrompt,
       state.settings.systemPrompt,
+      memoryContext,
     ].filter(Boolean).join('\n\n');
 
     const apiMessages = [];
@@ -1075,6 +1208,30 @@ export default function ChatView({ onOpenSettings }) {
                 </Tooltip>
               )
             )}
+
+            {/* Long-Term Memory Chip */}
+            <Tooltip title="Long-Term Memory: Manage persistent facts and context remembered across chats">
+              <Chip
+                icon={<Brain size={13} style={{ marginLeft: 6, color: theme.palette.info.main }} />}
+                label={memoriesCount > 0 ? `${memoriesCount} Memories` : 'Memory'}
+                size="small"
+                onClick={() => setMemoryModalOpen(true)}
+                variant="outlined"
+                sx={{
+                  height: 22,
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  borderColor: alpha(theme.palette.info.main, 0.4),
+                  bgcolor: alpha(theme.palette.info.main, 0.08),
+                  color: theme.palette.info.main,
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.info.main, 0.16),
+                  },
+                }}
+              />
+            </Tooltip>
           </Box>
 
           {/* Action Icons */}
@@ -1108,6 +1265,22 @@ export default function ChatView({ onOpenSettings }) {
                 sx={{ color: searchOpen ? 'primary.main' : 'text.secondary' }}
               >
                 <Search size={16} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Workspace Notes & Scratchpad (Cmd+Shift+N)">
+              <IconButton
+                size="small"
+                onClick={() => setNotesOpen((prev) => !prev)}
+                sx={{
+                  color: notesOpen ? 'primary.main' : 'text.secondary',
+                  bgcolor: notesOpen ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.text.primary, 0.06),
+                  },
+                }}
+              >
+                <FileText size={16} />
               </IconButton>
             </Tooltip>
 
@@ -1403,14 +1576,84 @@ export default function ChatView({ onOpenSettings }) {
         </Fab>
       )}
 
+      {/* Queued Messages Flow Banner */}
+      {queuedMessages.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            mx: { xs: 1.5, md: 3 },
+            mb: 1,
+            p: 1.25,
+            px: 2,
+            borderRadius: 2.5,
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1.5,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, flex: 1 }}>
+            <Chip
+              icon={<Clock size={13} color="var(--mui-palette-primary-main, #3b82f6)" />}
+              label={`Queued (${queuedMessages.length})`}
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                bgcolor: alpha(theme.palette.primary.main, 0.18),
+                color: 'primary.main',
+              }}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, overflowX: 'auto', py: 0.25, minWidth: 0 }}>
+              {queuedMessages.map((item, idx) => (
+                <Chip
+                  key={item.id}
+                  label={`${idx + 1}. ${item.text.length > 35 ? item.text.substring(0, 35) + '…' : item.text}`}
+                  size="small"
+                  onDelete={() => handleRemoveQueuedMessage(item.id)}
+                  sx={{
+                    height: 24,
+                    fontSize: '0.75rem',
+                    bgcolor: alpha(theme.palette.background.paper, 0.85),
+                    maxWidth: 220,
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+
+          <Button
+            size="small"
+            onClick={handleClearQueue}
+            sx={{
+              textTransform: 'none',
+              fontSize: '0.72rem',
+              color: 'text.secondary',
+              py: 0.25,
+              px: 1,
+              minWidth: 0,
+              '&:hover': { color: 'error.main' },
+            }}
+          >
+            Clear All
+          </Button>
+        </Paper>
+      )}
+
       {/* Message Input */}
       <MessageInput
         onSend={handleSend}
         onStop={handleStop}
-        disabled={state.isStreaming}
+        disabled={false}
         replyTo={replyToMessage}
         onCancelReply={() => setReplyToMessage(null)}
         onOpenSettings={onOpenSettings}
+        queuedCount={queuedMessages.length}
+        onOpenVoiceMode={() => setVoiceModeOpen(true)}
       />
 
       {/* AI Persona Selector Menu (built-in + custom) */}
@@ -1487,12 +1730,39 @@ export default function ChatView({ onOpenSettings }) {
         open={personaDialogOpen}
         onClose={() => setPersonaDialogOpen(false)}
         onSelectPersona={(personaId) => {
+          const persona = allPersonas.find((p) => p.id === personaId);
           if (activeConvo) {
             dispatch({
               type: 'SET_CONVERSATION_PERSONA',
               payload: { conversationId: activeConvo.id, persona: personaId },
             });
-            showToast(`Switched persona to custom persona`, 'info');
+
+            // Auto-switch model if modelfile has a pinned model
+            if (persona?.pinnedModel) {
+              dispatch({
+                type: 'SET_CONVERSATION_MODEL',
+                payload: { conversationId: activeConvo.id, model: persona.pinnedModel },
+              });
+              showToast(`Activated "${persona.name}" → model: ${persona.pinnedModel}`, 'info');
+            } else {
+              showToast(`Activated "${persona.name}"`, 'info');
+            }
+
+            // Inject greeting message if the chat is fresh (no messages yet)
+            if (persona?.greetingMessage && activeConvo.messages.length === 0) {
+              dispatch({
+                type: 'ADD_MESSAGE',
+                payload: {
+                  conversationId: activeConvo.id,
+                  message: {
+                    role: 'assistant',
+                    content: persona.greetingMessage,
+                    timestamp: new Date().toISOString(),
+                    isGreeting: true,
+                  },
+                },
+              });
+            }
           }
           setPersonaDialogOpen(false);
         }}
@@ -1594,6 +1864,40 @@ export default function ChatView({ onOpenSettings }) {
             setMissingKeyDialog(null);
             onOpenSettings?.(1);
           }}
+        />
+      )}
+      {/* Long-Term Memory Manager Dialog */}
+      {memoryModalOpen && (
+        <MemoryManagerDialog
+          open={memoryModalOpen}
+          onClose={() => {
+            setMemoryModalOpen(false);
+            setMemoriesCount(loadMemories().length);
+          }}
+        />
+      )}
+
+      {/* Workspace Notes & Scratchpad Drawer */}
+      {notesOpen && (
+        <NotesDrawer
+          open={notesOpen}
+          onClose={() => setNotesOpen(false)}
+          onSendToChat={(content) => {
+            window.dispatchEvent(new CustomEvent('llm-insert-text', { detail: { text: content } }));
+            setNotesOpen(false);
+          }}
+        />
+      )}
+
+      {/* Hands-Free Duplex Voice Mode Overlay */}
+      {voiceModeOpen && (
+        <VoiceModeOverlay
+          open={voiceModeOpen}
+          onClose={() => setVoiceModeOpen(false)}
+          onSend={handleSend}
+          isStreaming={state.isStreaming}
+          lastAssistantMessage={lastAssistantMessage}
+          modelName={activeConvo?.model || state.settings.selectedModel || ''}
         />
       )}
       </Suspense>

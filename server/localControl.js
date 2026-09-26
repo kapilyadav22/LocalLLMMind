@@ -144,6 +144,37 @@ export function createLocalControl({ root, probe = ollamaRunning, findOllama = (
         starting ||= startOllama().finally(() => { starting = null; });
         return send(200, await starting);
       }
+      if (route === '/local-api/jev/systemone') {
+        const apiKey = (data.apiKey || process.env.TYPESAFE_API_KEY || process.env.JEV_API_KEY || '').trim();
+        if (!apiKey) {
+          return send(400, { error: 'TypeSafe API key is required. Set it in Settings or environment variable TYPESAFE_API_KEY.' });
+        }
+        const endpoint = (data.endpoint || 'https://api.typesafe.ai/v1').replace(/\/+$/, '');
+        const targetUrl = `${endpoint}/systemone`;
+        const payload = {
+          model: data.model || 'typesafe/jev-1.13',
+          state: data.state || '',
+          questions: data.questions || {},
+        };
+
+        const apiRes = await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const resData = await apiRes.json().catch(() => ({}));
+        if (!apiRes.ok) {
+          return send(apiRes.status, {
+            error: resData.error?.message || resData.message || `TypeSafe API Error (${apiRes.status})`,
+            details: resData,
+          });
+        }
+        return send(200, resData);
+      }
       if (route === '/local-api/projects/format') return send(200, await formatPython({ root, content: data.content, filePath: data.filePath }));
       if (route === '/local-api/projects/save') {
         const files = validateFiles(data.files);

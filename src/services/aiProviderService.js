@@ -11,6 +11,7 @@
 
 import { PROVIDERS, PROVIDER_CONFIGS, resolveModelProvider } from '../constants/apiProviders.js';
 import { streamChat as streamOllamaChat } from './ollamaService.js';
+import { localAction } from './localControlService.js';
 
 export class MissingApiKeyError extends Error {
   constructor(provider, model) {
@@ -48,6 +49,88 @@ function formatOpenAiVisionContent(text, images = []) {
   return content;
 }
 
+// Cache of models that do not support custom temperature
+export const temperatureUnsupportedModels = new Set();
+// Cache of models that require max_completion_tokens instead of max_tokens
+export const maxCompletionTokensModels = new Set();
+
+/**
+ * Checks if a model is a reasoning / thinking model that rejects custom temperature or max_tokens
+ */
+export function isReasoningModel(modelName = '') {
+  if (!modelName) return false;
+  const m = String(modelName).toLowerCase().trim();
+  const clean = m.includes('/') ? m.split('/').pop() : m.includes(':') ? m.split(':').pop() : m;
+
+  return (
+    clean.startsWith('o1') ||
+    clean.startsWith('o3') ||
+    clean.startsWith('o4') ||
+    clean.includes('reasoning') ||
+    clean.includes('reasoner') ||
+    clean.includes('r1') ||
+    clean.includes('qwq') ||
+    temperatureUnsupportedModels.has(modelName) ||
+    temperatureUnsupportedModels.has(clean)
+  );
+}
+
+async function processOpenAiStream(response, onToken, onDone) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let totalTokens = 0;
+  const streamStartTime = performance.now();
+  let firstTokenTime = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      const dataStr = trimmed.replace(/^data:\s*/, '');
+      if (dataStr === '[DONE]') {
+        const elapsedMs = Math.max(performance.now() - streamStartTime, 1);
+        const ttftMs = firstTokenTime ? firstTokenTime - streamStartTime : null;
+        onDone?.({
+          eval_count: totalTokens,
+          eval_duration: elapsedMs * 1e6,
+          prompt_eval_duration: ttftMs ? ttftMs * 1e6 : undefined,
+          total_duration: elapsedMs * 1e6,
+        });
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          if (!firstTokenTime) firstTokenTime = performance.now();
+          totalTokens += 1;
+          onToken?.(delta);
+        }
+      } catch {
+        // ignore unparsable fragments
+      }
+    }
+  }
+
+  const elapsedMs = Math.max(performance.now() - streamStartTime, 1);
+  const ttftMs = firstTokenTime ? firstTokenTime - streamStartTime : null;
+  onDone?.({
+    eval_count: totalTokens,
+    eval_duration: elapsedMs * 1e6,
+    prompt_eval_duration: ttftMs ? ttftMs * 1e6 : undefined,
+    total_duration: elapsedMs * 1e6,
+  });
+}
+
 /**
  * Stream OpenAI-compatible chat completion (OpenAI, Grok, Custom, OpenRouter)
  */
@@ -65,15 +148,19 @@ async function streamOpenAiCompatible({
   const cleanEndpoint = (endpoint || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const url = `${cleanEndpoint}/chat/completions`;
 
+  const reasoning = isReasoningModel(model);
+
   const formattedMessages = messages.map((m) => {
+    // If reasoning model, convert 'system' role to 'developer'
+    const role = (reasoning && m.role === 'system') ? 'developer' : m.role;
     if (m.role === 'user' && m.images && m.images.length > 0) {
       return {
-        role: m.role,
+        role,
         content: formatOpenAiVisionContent(m.content, m.images),
       };
     }
     return {
-      role: m.role,
+      role,
       content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
     };
   });
@@ -84,14 +171,25 @@ async function streamOpenAiCompatible({
     stream: true,
   };
 
-  // Only pass temperature for models that support it (e.g. o1/o3-mini do not support custom temperature)
-  if (!model.startsWith('o1') && !model.startsWith('o3')) {
-    requestBody.temperature = options.temperature ?? 0.7;
-    if (options.topP !== undefined) requestBody.top_p = options.topP;
+  // Only pass temperature & top_p for models that support it
+  if (!reasoning && !temperatureUnsupportedModels.has(model)) {
+    if (options.temperature !== undefined) {
+      requestBody.temperature = options.temperature;
+    } else {
+      requestBody.temperature = 0.7;
+    }
+    if (options.topP !== undefined) {
+      requestBody.top_p = options.topP;
+    }
   }
 
+  // Token limits: reasoning models require max_completion_tokens
   if (options.maxTokens && options.maxTokens > 0) {
-    requestBody.max_tokens = options.maxTokens;
+    if (reasoning || maxCompletionTokensModels.has(model)) {
+      requestBody.max_completion_tokens = options.maxTokens;
+    } else {
+      requestBody.max_tokens = options.maxTokens;
+    }
   }
 
   try {
@@ -107,45 +205,83 @@ async function streamOpenAiCompatible({
 
     if (!response.ok) {
       const errText = await response.text().catch(() => response.statusText);
+      let errJson = null;
+      try {
+        errJson = JSON.parse(errText);
+      } catch {
+        // Not JSON
+      }
+
+      const errMsg = (errJson?.error?.message || errText || '').toLowerCase();
+      const errParam = (errJson?.error?.param || '').toLowerCase();
+      const errCode = (errJson?.error?.code || '').toLowerCase();
+
+      // Check if error is due to unsupported temperature / top_p / max_tokens / system role
+      const isTempError =
+        errParam === 'temperature' ||
+        (errCode === 'unsupported_value' && errMsg.includes('temperature')) ||
+        (errMsg.includes('temperature') && (errMsg.includes('unsupported') || errMsg.includes('does not support') || errMsg.includes('only the default')));
+
+      const isTopPError =
+        errParam === 'top_p' ||
+        (errMsg.includes('top_p') && (errMsg.includes('unsupported') || errMsg.includes('does not support')));
+
+      const isMaxTokensError =
+        errParam === 'max_tokens' ||
+        (errMsg.includes('max_tokens') && (errMsg.includes('max_completion_tokens') || errMsg.includes('not supported') || errMsg.includes('unsupported')));
+
+      const isSystemRoleError =
+        errMsg.includes("'system'") && (errMsg.includes('not supported') || errMsg.includes('developer'));
+
+      // Auto-remediation: retry with adjusted parameters
+      if (isTempError || isTopPError || isMaxTokensError || isSystemRoleError) {
+        if (isTempError) temperatureUnsupportedModels.add(model);
+        if (isMaxTokensError) maxCompletionTokensModels.add(model);
+
+        console.warn(`[aiProviderService] Model "${model}" rejected parameter(s). Auto-adjusting and retrying...`);
+
+        const adjustedBody = { ...requestBody };
+
+        if (isTempError || isTopPError) {
+          delete adjustedBody.temperature;
+          delete adjustedBody.top_p;
+        }
+
+        if (isMaxTokensError) {
+          if (adjustedBody.max_tokens) {
+            adjustedBody.max_completion_tokens = adjustedBody.max_tokens;
+            delete adjustedBody.max_tokens;
+          }
+        }
+
+        if (isSystemRoleError) {
+          adjustedBody.messages = adjustedBody.messages.map((m) =>
+            m.role === 'system' ? { ...m, role: 'developer' } : m
+          );
+        }
+
+        const retryRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(adjustedBody),
+          signal,
+        });
+
+        if (retryRes.ok) {
+          return await processOpenAiStream(retryRes, onToken, onDone);
+        }
+
+        const retryErrText = await retryRes.text().catch(() => retryRes.statusText);
+        throw new Error(`API Error (${retryRes.status}): ${retryErrText || retryRes.statusText}`);
+      }
+
       throw new Error(`API Error (${response.status}): ${errText || response.statusText}`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let totalTokens = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-        const dataStr = trimmed.replace(/^data:\s*/, '');
-        if (dataStr === '[DONE]') {
-          onDone?.({ eval_count: totalTokens });
-          return;
-        }
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) {
-            totalTokens += 1;
-            onToken?.(delta);
-          }
-        } catch {
-          // ignore unparsable fragments
-        }
-      }
-    }
-
-    onDone?.({ eval_count: totalTokens });
+    return await processOpenAiStream(response, onToken, onDone);
   } catch (error) {
     if (error.name === 'AbortError') {
       onDone?.({ aborted: true });
@@ -153,6 +289,60 @@ async function streamOpenAiCompatible({
       onError?.(error);
     }
   }
+}
+
+async function processAnthropicStream(response, onToken, onDone) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let totalTokens = 0;
+  const streamStartTime = performance.now();
+  let firstTokenTime = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      const dataStr = trimmed.replace(/^data:\s*/, '');
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+          if (!firstTokenTime) firstTokenTime = performance.now();
+          totalTokens += 1;
+          onToken?.(parsed.delta.text);
+        } else if (parsed.type === 'message_stop') {
+          const elapsedMs = Math.max(performance.now() - streamStartTime, 1);
+          const ttftMs = firstTokenTime ? firstTokenTime - streamStartTime : null;
+          onDone?.({
+            eval_count: totalTokens,
+            eval_duration: elapsedMs * 1e6,
+            prompt_eval_duration: ttftMs ? ttftMs * 1e6 : undefined,
+            total_duration: elapsedMs * 1e6,
+          });
+          return;
+        }
+      } catch {
+        // ignore malformed fragments
+      }
+    }
+  }
+
+  const elapsedMs = Math.max(performance.now() - streamStartTime, 1);
+  const ttftMs = firstTokenTime ? firstTokenTime - streamStartTime : null;
+  onDone?.({
+    eval_count: totalTokens,
+    eval_duration: elapsedMs * 1e6,
+    prompt_eval_duration: ttftMs ? ttftMs * 1e6 : undefined,
+    total_duration: elapsedMs * 1e6,
+  });
 }
 
 /**
@@ -219,8 +409,11 @@ async function streamAnthropic({
     requestBody.system = systemPrompt;
   }
 
-  if (options.temperature !== undefined) {
-    requestBody.temperature = options.temperature;
+  const reasoning = isReasoningModel(model);
+  if (!reasoning && !temperatureUnsupportedModels.has(model)) {
+    if (options.temperature !== undefined) {
+      requestBody.temperature = options.temperature;
+    }
   }
 
   try {
@@ -238,43 +431,55 @@ async function streamAnthropic({
 
     if (!response.ok) {
       const errText = await response.text().catch(() => response.statusText);
+      let errJson = null;
+      try {
+        errJson = JSON.parse(errText);
+      } catch {
+        // Not JSON
+      }
+
+      const errMsg = (errJson?.error?.message || errText || '').toLowerCase();
+
+      // Check if error is due to unsupported or deprecated temperature
+      const isTempError =
+        errMsg.includes('temperature') &&
+        (errMsg.includes('deprecated') ||
+         errMsg.includes('unsupported') ||
+         errMsg.includes('does not support') ||
+         errMsg.includes('must be 1') ||
+         errMsg.includes('only the default'));
+
+      if (isTempError && requestBody.temperature !== undefined) {
+        temperatureUnsupportedModels.add(model);
+        console.warn(`[aiProviderService] Anthropic model "${model}" rejected temperature (${errMsg}). Auto-retrying without temperature...`);
+
+        const adjustedBody = { ...requestBody };
+        delete adjustedBody.temperature;
+
+        const retryRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify(adjustedBody),
+          signal,
+        });
+
+        if (retryRes.ok) {
+          return await processAnthropicStream(retryRes, onToken, onDone);
+        }
+
+        const retryErrText = await retryRes.text().catch(() => retryRes.statusText);
+        throw new Error(`Anthropic Error (${retryRes.status}): ${retryErrText || retryRes.statusText}`);
+      }
+
       throw new Error(`Anthropic Error (${response.status}): ${errText || response.statusText}`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let totalTokens = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-        const dataStr = trimmed.replace(/^data:\s*/, '');
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-            totalTokens += 1;
-            onToken?.(parsed.delta.text);
-          } else if (parsed.type === 'message_stop') {
-            onDone?.({ eval_count: totalTokens });
-            return;
-          }
-        } catch {
-          // ignore malformed fragments
-        }
-      }
-    }
-
-    onDone?.({ eval_count: totalTokens });
+    return await processAnthropicStream(response, onToken, onDone);
   } catch (error) {
     if (error.name === 'AbortError') {
       onDone?.({ aborted: true });
@@ -282,6 +487,52 @@ async function streamAnthropic({
       onError?.(error);
     }
   }
+}
+
+async function processGeminiStream(response, onToken, onDone) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let totalTokens = 0;
+  const streamStartTime = performance.now();
+  let firstTokenTime = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      const dataStr = trimmed.replace(/^data:\s*/, '');
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        const candidate = parsed.candidates?.[0];
+        const textPart = candidate?.content?.parts?.[0]?.text;
+        if (textPart) {
+          if (!firstTokenTime) firstTokenTime = performance.now();
+          totalTokens += Math.ceil(textPart.length / 4);
+          onToken?.(textPart);
+        }
+      } catch {
+        // ignore malformed fragments
+      }
+    }
+  }
+
+  const elapsedMs = Math.max(performance.now() - streamStartTime, 1);
+  const ttftMs = firstTokenTime ? firstTokenTime - streamStartTime : null;
+  onDone?.({
+    eval_count: totalTokens,
+    eval_duration: elapsedMs * 1e6,
+    prompt_eval_duration: ttftMs ? ttftMs * 1e6 : undefined,
+    total_duration: elapsedMs * 1e6,
+  });
 }
 
 /**
@@ -299,14 +550,17 @@ async function streamGemini({
   signal,
 }) {
   const cleanEndpoint = (endpoint || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/+$/, '');
-  const url = `${cleanEndpoint}/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const cleanModel = model.replace(/^models\//, '');
+  const url = `${cleanEndpoint}/models/${cleanModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
   let systemInstruction = null;
   const contents = [];
 
   for (const m of messages) {
     if (m.role === 'system') {
-      systemInstruction = { parts: [{ text: m.content }] };
+      systemInstruction = {
+        parts: [{ text: m.content || '' }],
+      };
     } else {
       const parts = [];
       if (m.images && m.images.length > 0) {
@@ -333,14 +587,19 @@ async function streamGemini({
     }
   }
 
+  const reasoning = isReasoningModel(model);
+
   const requestBody = {
     contents,
     generationConfig: {
-      temperature: options.temperature ?? 0.7,
-      topP: options.topP ?? 0.95,
       ...(options.maxTokens && options.maxTokens > 0 && { maxOutputTokens: options.maxTokens }),
     },
   };
+
+  if (!reasoning && !temperatureUnsupportedModels.has(model)) {
+    requestBody.generationConfig.temperature = options.temperature ?? 0.7;
+    requestBody.generationConfig.topP = options.topP ?? 0.95;
+  }
 
   if (systemInstruction) {
     requestBody.systemInstruction = systemInstruction;
@@ -356,42 +615,49 @@ async function streamGemini({
 
     if (!response.ok) {
       const errText = await response.text().catch(() => response.statusText);
+      let errJson = null;
+      try {
+        errJson = JSON.parse(errText);
+      } catch {
+        // Not JSON
+      }
+
+      const errMsg = (errJson?.error?.message || errText || '').toLowerCase();
+      const isTempError =
+        errMsg.includes('temperature') &&
+        (errMsg.includes('deprecated') ||
+         errMsg.includes('unsupported') ||
+         errMsg.includes('does not support') ||
+         errMsg.includes('invalid'));
+
+      if (isTempError && requestBody.generationConfig?.temperature !== undefined) {
+        temperatureUnsupportedModels.add(model);
+        console.warn(`[aiProviderService] Gemini model "${model}" rejected temperature. Auto-retrying without temperature...`);
+
+        const adjustedBody = { ...requestBody };
+        adjustedBody.generationConfig = { ...adjustedBody.generationConfig };
+        delete adjustedBody.generationConfig.temperature;
+        delete adjustedBody.generationConfig.topP;
+
+        const retryRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(adjustedBody),
+          signal,
+        });
+
+        if (retryRes.ok) {
+          return await processGeminiStream(retryRes, onToken, onDone);
+        }
+
+        const retryErrText = await retryRes.text().catch(() => retryRes.statusText);
+        throw new Error(`Gemini Error (${retryRes.status}): ${retryErrText || retryRes.statusText}`);
+      }
+
       throw new Error(`Gemini Error (${response.status}): ${errText || response.statusText}`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let totalTokens = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-        const dataStr = trimmed.replace(/^data:\s*/, '');
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          const candidate = parsed.candidates?.[0];
-          const textPart = candidate?.content?.parts?.[0]?.text;
-          if (textPart) {
-            totalTokens += Math.ceil(textPart.length / 4);
-            onToken?.(textPart);
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    onDone?.({ eval_count: totalTokens });
+    return await processGeminiStream(response, onToken, onDone);
   } catch (error) {
     if (error.name === 'AbortError') {
       onDone?.({ aborted: true });
@@ -402,7 +668,74 @@ async function streamGemini({
 }
 
 /**
- * Stream or execute Jev (TypeSafe / Typeface) decision model
+ * Execute TypeSafe Jev System One structured decision endpoint
+ *
+ * Dedicated request adapter for Jev:
+ * - Direct POST to https://api.typesafe.ai/v1/systemone (via /local-api/jev/systemone backend route)
+ * - State + Questions payload structure (not /chat/completions)
+ * - Questions can be bool, choice, score, text
+ * - Protects API key by prioritizing backend proxy so keys are not exposed in browser network logs
+ */
+export async function executeJevSystemOne({
+  state,
+  questions = {},
+  model = 'typesafe/jev-1.13',
+  apiKey,
+  endpoint,
+  signal,
+}) {
+  if (!state || typeof state !== 'string' || !state.trim()) {
+    throw new Error('Jev System One requires a non-empty state description.');
+  }
+
+  // Attempt backend route first so API key stays securely on backend server
+  try {
+    const result = await localAction('jev/systemone', {
+      state: state.trim(),
+      questions,
+      model: model || 'typesafe/jev-1.13',
+      apiKey: apiKey?.trim() || undefined,
+      endpoint,
+    });
+    return result;
+  } catch (backendError) {
+    // If backend proxy unavailable or desktop controls not running, fallback to direct fetch
+    const cleanKey = apiKey?.trim();
+    if (!cleanKey) {
+      throw new Error(
+        backendError.message ||
+        'TypeSafe API key is required. Set it in Settings or configure TYPESAFE_API_KEY on the backend server.'
+      );
+    }
+
+    const cleanEndpoint = (endpoint || 'https://api.typesafe.ai/v1').replace(/\/+$/, '');
+    const url = `${cleanEndpoint}/systemone`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cleanKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model || 'typesafe/jev-1.13',
+        state: state.trim(),
+        questions,
+      }),
+      signal,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error?.message || data.message || `TypeSafe API Error (${response.status})`);
+    }
+
+    return data;
+  }
+}
+
+/**
+ * Stream or execute Jev (TypeSafe) decision model
  */
 async function streamJev({
   endpoint,
@@ -417,12 +750,12 @@ async function streamJev({
 }) {
   const cleanEndpoint = (endpoint || 'https://api.typesafe.ai/v1').replace(/\/+$/, '');
 
-  // If using an OpenAI-compatible gateway (e.g., OpenRouter or Vercel AI Gateway)
-  if (cleanEndpoint.includes('/v1') && !cleanEndpoint.includes('typesafe.ai')) {
+  // If user configured an OpenAI-compatible gateway (e.g. OpenRouter or custom proxy)
+  if (cleanEndpoint.includes('/v1') && !cleanEndpoint.includes('typesafe.ai') && !cleanEndpoint.includes('localhost') && !cleanEndpoint.includes('127.0.0.1')) {
     return streamOpenAiCompatible({
       endpoint: cleanEndpoint,
       apiKey,
-      model: model || 'typesafe/jev-latest',
+      model: model || 'typesafe/jev-1.13',
       messages,
       options,
       onToken,
@@ -432,77 +765,74 @@ async function streamJev({
     });
   }
 
-  // Direct TypeSafe System One Endpoint
-  const url = `${cleanEndpoint}/systemone`;
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
   const inquiry = lastUserMsg?.content || 'Decision evaluation';
 
   try {
     const startTime = performance.now();
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'x-api-key': apiKey,
+
+    // Support structured questions passed in options or provide default decision questions
+    const questions = options.questions || {
+      needs_human: {
+        type: 'bool',
+        instructions: 'Does this state/incident need immediate human escalation?',
       },
-      body: JSON.stringify({
-        state: inquiry,
-        model: model || 'jev-latest',
-        questions: {
-          classification: {
-            type: 'choice',
-            choices: ['Optimal', 'Viable', 'Needs Refinement', 'Warning', 'Reject'],
-          },
-          confidence: {
-            type: 'score',
-            min: 0,
-            max: 100,
-          },
-          summary: {
-            type: 'text',
-          },
-        },
-      }),
+      classification: {
+        type: 'choice',
+        choices: ['Optimal', 'Viable', 'Needs Refinement', 'Warning', 'Critical'],
+        instructions: 'Classify the overall quality, safety, and operational state.',
+      },
+      confidence: {
+        type: 'score',
+        min: 0,
+        max: 100,
+        instructions: 'Confidence score (0-100) regarding this evaluation.',
+      },
+      summary: {
+        type: 'text',
+        instructions: 'Provide a concise 1-2 sentence rationalization for this decision.',
+      },
+    };
+
+    const data = await executeJevSystemOne({
+      state: inquiry,
+      questions,
+      model: model || 'typesafe/jev-1.13',
+      apiKey,
+      endpoint,
       signal,
     });
 
     const elapsed = Math.round(performance.now() - startTime);
+    const answers = data.answers || data.results || data || {};
 
-    if (!response.ok) {
-      // Fallback: If direct endpoint is unavailable or returns 404, try standard completions endpoint
-      return streamOpenAiCompatible({
-        endpoint: cleanEndpoint,
-        apiKey,
-        model: model || 'jev-latest',
-        messages,
-        options,
-        onToken,
-        onDone,
-        onError,
-        signal,
-      });
+    let outputMarkdown = `### 🎯 TypeSafe Jev Decision Result\n\n`;
+    outputMarkdown += `> **Model:** \`${model || 'typesafe/jev-1.13'}\` • **Latency:** \`${elapsed}ms\` • **API:** \`System One (Structured Decision)\`\n\n`;
+
+    outputMarkdown += `#### 📋 Structured Evaluations\n\n`;
+    for (const [key, val] of Object.entries(answers)) {
+      if (typeof val === 'object' && val !== null) {
+        const valText = val.value !== undefined ? String(val.value) : JSON.stringify(val);
+        const confText = val.confidence !== undefined ? ` *(confidence: ${Math.round(val.confidence * 100)}%)*` : '';
+        const reasonText = val.reasoning ? `\n  - *Reasoning:* ${val.reasoning}` : '';
+        outputMarkdown += `- **${key}:** \`${valText}\`${confText}${reasonText}\n`;
+      } else {
+        outputMarkdown += `- **${key}:** \`${val}\`\n`;
+      }
     }
 
-    const data = await response.json();
-    const classification = data.answers?.classification || 'Completed';
-    const confidence = data.answers?.confidence ?? 98;
-    const summary = data.answers?.summary || data.decision || 'Evaluation completed successfully.';
-
-    const outputMarkdown = `### 🎯 Jev System One Decision\n\n` +
-      `- **Classification:** \`${classification}\`\n` +
-      `- **Confidence Score:** **${confidence}%**\n` +
-      `- **Execution Latency:** \`${elapsed}ms\` (Ultra Low-Latency)\n\n` +
-      `**Decision Analysis:**\n${summary}\n`;
+    if (data.decision || data.summary) {
+      outputMarkdown += `\n**Decision Summary:**\n${data.decision || data.summary}\n`;
+    }
 
     // Stream out chunks smoothly
-    const chunkSize = 8;
+    const chunkSize = 16;
     for (let i = 0; i < outputMarkdown.length; i += chunkSize) {
       onToken?.(outputMarkdown.slice(i, i + chunkSize));
-      await new Promise((r) => setTimeout(r, 15));
+      await new Promise((r) => setTimeout(r, 10));
     }
 
-    onDone?.({ eval_count: 50, eval_duration: elapsed * 1e6 });
+    onDone?.({ eval_count: Object.keys(answers).length * 10, eval_duration: elapsed * 1e6 });
   } catch (error) {
     if (error.name === 'AbortError') {
       onDone?.({ aborted: true });
@@ -579,8 +909,26 @@ export async function testProviderConnection(providerId, apiKey, endpoint) {
       }
 
       case PROVIDERS.JEV: {
-        const _ep = (endpoint || 'https://api.typesafe.ai/v1').replace(/\/+$/, '');
-        return { ok: true, message: `Jev (TypeSafe) endpoint ${_ep} configured and ready.` };
+        try {
+          const res = await executeJevSystemOne({
+            state: 'Connection probe test to verify TypeSafe Jev API credentials.',
+            questions: {
+              active: {
+                type: 'bool',
+                instructions: 'Is the API operational?',
+              },
+            },
+            model: 'typesafe/jev-1.13',
+            apiKey: cleanKey,
+            endpoint,
+          });
+          if (res && (res.answers || res.status === 200 || !res.error)) {
+            return { ok: true, message: 'TypeSafe Jev API connection verified successfully!' };
+          }
+          return { ok: false, message: res.error || 'Unexpected response from TypeSafe Jev' };
+        } catch (err) {
+          return { ok: false, message: err.message || 'Connection to TypeSafe Jev failed' };
+        }
       }
 
       case PROVIDERS.CUSTOM: {

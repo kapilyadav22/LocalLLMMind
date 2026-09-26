@@ -21,12 +21,14 @@ import {
   Scale,
 } from 'lucide-react';
 import MarkdownRenderer from '../common/MarkdownRenderer';
+import GenerationStatsDialog from './GenerationStatsDialog';
 import { showToast } from '../../utils/toast';
 
-export default function ArenaMessageBubble({ msg, onVote }) {
+export default function ArenaMessageBubble({ msg, onVote }: any) {
   const theme = useTheme();
   const [copiedA, setCopiedA] = useState(false);
   const [copiedB, setCopiedB] = useState(false);
+  const [selectedStatsModel, setSelectedStatsModel] = useState<'A' | 'B' | null>(null);
 
   const modelA = msg.modelA || { name: 'Model A', content: '', isStreaming: false, metrics: null };
   const modelB = msg.modelB || { name: 'Model B', content: '', isStreaming: false, metrics: null };
@@ -163,18 +165,38 @@ export default function ArenaMessageBubble({ msg, onVote }) {
                   />
                 ) : modelA.metrics ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Chip
-                      icon={<Zap size={11} style={{ marginLeft: 5 }} />}
-                      label={`${modelA.metrics.tokPerSec} t/s`}
-                      size="small"
-                      sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
-                    />
-                    <Chip
-                      icon={<Clock size={11} style={{ marginLeft: 5 }} />}
-                      label={`${modelA.metrics.duration}s`}
-                      size="small"
-                      sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
-                    />
+                    <Tooltip title="Inspect Model A generation metrics & token breakdown">
+                      <Chip
+                        icon={<Zap size={11} style={{ marginLeft: 5 }} />}
+                        label={`${modelA.metrics.tokPerSec} t/s`}
+                        size="small"
+                        onClick={() => setSelectedStatsModel('A')}
+                        clickable
+                        sx={{
+                          height: 18,
+                          fontSize: '0.62rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) },
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Inspect Model A generation metrics & token breakdown">
+                      <Chip
+                        icon={<Clock size={11} style={{ marginLeft: 5 }} />}
+                        label={`${modelA.metrics.duration}s`}
+                        size="small"
+                        onClick={() => setSelectedStatsModel('A')}
+                        clickable
+                        sx={{
+                          height: 18,
+                          fontSize: '0.62rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) },
+                        }}
+                      />
+                    </Tooltip>
                   </Box>
                 ) : null}
 
@@ -281,18 +303,38 @@ export default function ArenaMessageBubble({ msg, onVote }) {
                   />
                 ) : modelB.metrics ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Chip
-                      icon={<Zap size={11} style={{ marginLeft: 5 }} />}
-                      label={`${modelB.metrics.tokPerSec} t/s`}
-                      size="small"
-                      sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
-                    />
-                    <Chip
-                      icon={<Clock size={11} style={{ marginLeft: 5 }} />}
-                      label={`${modelB.metrics.duration}s`}
-                      size="small"
-                      sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600 }}
-                    />
+                    <Tooltip title="Inspect Model B generation metrics & token breakdown">
+                      <Chip
+                        icon={<Zap size={11} style={{ marginLeft: 5 }} />}
+                        label={`${modelB.metrics.tokPerSec} t/s`}
+                        size="small"
+                        onClick={() => setSelectedStatsModel('B')}
+                        clickable
+                        sx={{
+                          height: 18,
+                          fontSize: '0.62rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.2) },
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Inspect Model B generation metrics & token breakdown">
+                      <Chip
+                        icon={<Clock size={11} style={{ marginLeft: 5 }} />}
+                        label={`${modelB.metrics.duration}s`}
+                        size="small"
+                        onClick={() => setSelectedStatsModel('B')}
+                        clickable
+                        sx={{
+                          height: 18,
+                          fontSize: '0.62rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.2) },
+                        }}
+                      />
+                    </Tooltip>
                   </Box>
                 ) : null}
 
@@ -352,6 +394,16 @@ export default function ArenaMessageBubble({ msg, onVote }) {
           {vote === 'tie' ? 'Result: Both models tied' : 'Tie / Both equally good'}
         </Button>
       </Box>
+
+      {/* Generation Metrics & Token Inspector Dialog for Arena Models */}
+      {selectedStatsModel && (
+        <GenerationStatsDialog
+          open={Boolean(selectedStatsModel)}
+          onClose={() => setSelectedStatsModel(null)}
+          metrics={selectedStatsModel === 'A' ? modelA.metrics : modelB.metrics}
+          modelName={selectedStatsModel === 'A' ? modelA.name : modelB.name}
+        />
+      )}
     </Box>
   );
 }

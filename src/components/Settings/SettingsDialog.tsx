@@ -56,9 +56,12 @@ import {
   Folder,
   FolderInput,
   X,
+  Brain,
 } from 'lucide-react';
 import ShortcutsManager from '../common/ShortcutsManager';
 import DeveloperBadge from '../common/DeveloperBadge';
+import MemoryManagerDialog from './MemoryManagerDialog';
+import { loadMemories, MemoryItem } from '../../utils/memoryStorage';
 import { showCustomAlert, showCustomConfirm } from '../../utils/dialogService';
 import { checkConnection, fetchModels, pullModel, deleteModel } from '../../services/ollamaService';
 import { PROVIDERS, PROVIDER_CONFIGS } from '../../constants/apiProviders';
@@ -84,6 +87,7 @@ const SETTINGS_SECTIONS = [
   { id: 4, label: 'Shortcuts', icon: Keyboard, description: 'Custom keyboard shortcuts & hotkey actions' },
   { id: 5, label: 'Appearance', icon: Palette, description: 'Color theme & visual appearance' },
   { id: 6, label: 'Storage & Memory', icon: HardDrive, description: 'Local chat persistence, backups, & data management' },
+  { id: 7, label: 'Long-Term Memory', icon: Brain, description: 'AI persistent memory facts, preferences & cross-session recall' },
 ];
 
 function TabPanel({ children, value, index }) {
@@ -120,6 +124,24 @@ export default function SettingsDialog({
   const [syncingDir, setSyncingDir] = useState(false);
   const [loadingDir, setLoadingDir] = useState(false);
   const fsSupported = isFileSystemAccessSupported();
+
+  // Long-Term Memory state
+  const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
+  const [memoriesList, setMemoriesList] = useState<MemoryItem[]>(() => loadMemories());
+
+  useEffect(() => {
+    if (open) {
+      setMemoriesList(loadMemories());
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const handleMemoriesUpdated = (e: any) => {
+      setMemoriesList(Array.isArray(e.detail) ? e.detail : loadMemories());
+    };
+    window.addEventListener('localllmmind-memories-updated', handleMemoriesUpdated);
+    return () => window.removeEventListener('localllmmind-memories-updated', handleMemoriesUpdated);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -1508,6 +1530,125 @@ export default function SettingsDialog({
           </Box>
         </TabPanel>
 
+        {/* Long-Term Memory Tab */}
+        <TabPanel value={tab} index={7}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Persistent Long-Term Memory
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Persistent facts, preferences, and context remembered across sessions and automatically injected into prompts.
+              </Typography>
+
+              {/* Master Memory Switch */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2.5, bgcolor: alpha(theme.palette.background.paper, 0.4), border: '1px solid', borderColor: 'divider', mb: 2 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Enable Long-Term Memory
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Injects your saved facts and user preferences into every conversation context.
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={localSettings.enableLongTermMemory !== false}
+                  onChange={(e) => handleSettingChange('enableLongTermMemory', e.target.checked)}
+                  color="primary"
+                />
+              </Box>
+
+              {/* Auto Learn Switch */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2.5, bgcolor: alpha(theme.palette.background.paper, 0.4), border: '1px solid', borderColor: 'divider', mb: 2 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Auto-Extract Facts from Chat
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Automatically detects statements like "I prefer X" or "My stack is Y" and saves them to memory.
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={localSettings.autoLearnMemory !== false}
+                  onChange={(e) => handleSettingChange('autoLearnMemory', e.target.checked)}
+                  color="primary"
+                />
+              </Box>
+
+              {/* Open Memory Manager Button & Stats */}
+              <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: alpha(theme.palette.info.main, 0.04), borderColor: alpha(theme.palette.info.main, 0.25) }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{ p: 1, borderRadius: 2, bgcolor: alpha(theme.palette.info.main, 0.12), color: 'info.main', display: 'flex' }}>
+                        <Brain size={22} />
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Memory Bank ({memoriesList.length} items)
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          View, edit, search, and add custom memory facts.
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<Brain size={15} />}
+                      onClick={() => setMemoryDialogOpen(true)}
+                      sx={{ textTransform: 'none', borderRadius: 2 }}
+                    >
+                      Manage Memories
+                    </Button>
+                  </Box>
+
+                  {memoriesList.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 180, overflowY: 'auto', mt: 2, pr: 0.5 }}>
+                      {memoriesList.slice(0, 5).map((m) => (
+                        <Box
+                          key={m.id}
+                          sx={{
+                            p: 1.25,
+                            px: 1.5,
+                            borderRadius: 2,
+                            bgcolor: alpha(theme.palette.background.paper, 0.7),
+                            border: '1px solid',
+                            borderColor: alpha(theme.palette.divider, 0.6),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontSize: '0.82rem', flex: 1 }}>
+                            {m.content}
+                          </Typography>
+                          <Chip
+                            label={m.source || 'manual'}
+                            size="small"
+                            variant="outlined"
+                            sx={{ height: 18, fontSize: '0.65rem' }}
+                          />
+                        </Box>
+                      ))}
+                      {memoriesList.length > 5 && (
+                        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', pt: 0.5 }}>
+                          +{memoriesList.length - 5} more memories...
+                        </Typography>
+                      )}
+                    </Box>
+                  ) : (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, fontStyle: 'italic' }}>
+                      No memories stored yet. Memories will appear here as you chat or add them.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+          </Box>
+        </TabPanel>
+
           </DialogContent>
 
           {/* Clean Footer */}
@@ -1563,6 +1704,17 @@ export default function SettingsDialog({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Memory Manager Modal */}
+      {memoryDialogOpen && (
+        <MemoryManagerDialog
+          open={memoryDialogOpen}
+          onClose={() => {
+            setMemoryDialogOpen(false);
+            setMemoriesList(loadMemories());
+          }}
+        />
+      )}
     </Dialog>
   );
 }

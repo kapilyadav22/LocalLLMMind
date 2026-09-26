@@ -41,7 +41,7 @@ export const DEFAULT_MODEL_BY_PROVIDER = {
   anthropic: 'claude-sonnet-5',
   gemini: 'gemini-3.8-flash',
   grok: 'grok-4.20-reasoning',
-  jev: 'jev-latest',
+  jev: 'typesafe/jev-1.13',
   custom: 'deepseek/deepseek-r1',
   ollama: '',
 };
@@ -208,6 +208,30 @@ export const MODEL_METADATA = {
   },
 
   // Jev (TypeSafe / Typeface)
+  'typesafe/jev-1.13': {
+    name: 'Jev 1.13',
+    provider: 'jev',
+    context: '64K',
+    description: 'Fast structured decision model (State → Questions, ~$0.042/1M tokens)',
+    badge: 'Recommended',
+    badgeColor: '#ec4899',
+  },
+  'typesafe/jev-latest': {
+    name: 'Jev Latest',
+    provider: 'jev',
+    context: '64K',
+    description: 'Sub-100ms structured decision, classification & triage model',
+    badge: 'Sub-100ms',
+    badgeColor: '#ec4899',
+  },
+  'typesafe/jev-1': {
+    name: 'Jev 1',
+    provider: 'jev',
+    context: '64K',
+    description: 'TypeSafe Jev family foundation classifier',
+    badge: 'Stable',
+    badgeColor: '#be185d',
+  },
   'jev-latest': {
     name: 'Jev Latest',
     provider: 'jev',

@@ -79,7 +79,7 @@ function webSearchPlugin() {
 export default defineConfig({
   plugins: [localControlPlugin(), react(), webSearchPlugin()],
   server: {
-    port: 5173,
+    port: 2210,
     proxy: {
       '/api': {
         target: 'http://localhost:11434',
@@ -89,7 +89,7 @@ export default defineConfig({
     },
   },
   preview: {
-    port: 5173,
+    port: 2210,
     proxy: {
       '/api': {
         target: 'http://localhost:11434',

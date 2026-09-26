@@ -40,6 +40,7 @@ const ModelManagerDialog = lazy(() => import('../Settings/ModelManagerDialog'));
 const GlobalSearchDialog = lazy(() => import('./GlobalSearchDialog'));
 const KeyboardShortcutsDialog = lazy(() => import('../common/KeyboardShortcutsDialog'));
 const AboutMeModal = lazy(() => import('../About/AboutMeModal'));
+const JevDecisionStudioModal = lazy(() => import('../common/JevDecisionStudioModal'));
 const SIDEBAR_WIDTH = 280;
 
 export default function AppLayout({ themeMode, onThemeToggle }) {
@@ -58,13 +59,19 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [modelManagerOpen, setModelManagerOpen] = useState(false);
   const [aboutMeOpen, setAboutMeOpen] = useState(false);
+  const [jevStudioOpen, setJevStudioOpen] = useState(false);
   const { state, dispatch } = useChatStore();
 
-  // Listen for global open-about-me event (triggered from "Crafted by" watermark or badges)
+  // Listen for global open-about-me and open-jev-studio events
   useEffect(() => {
     const handleOpenAboutMe = () => setAboutMeOpen(true);
+    const handleOpenJevStudio = () => setJevStudioOpen(true);
     window.addEventListener('open-about-me', handleOpenAboutMe);
-    return () => window.removeEventListener('open-about-me', handleOpenAboutMe);
+    window.addEventListener('open-jev-studio', handleOpenJevStudio);
+    return () => {
+      window.removeEventListener('open-about-me', handleOpenAboutMe);
+      window.removeEventListener('open-jev-studio', handleOpenJevStudio);
+    };
   }, []);
 
   const handleOpenSettings = (tabIndex = 0) => {
@@ -638,6 +645,14 @@ export default function AppLayout({ themeMode, onThemeToggle }) {
           <AboutMeModal
             open={aboutMeOpen}
             onClose={() => setAboutMeOpen(false)}
+          />
+        )}
+
+        {jevStudioOpen && (
+          <JevDecisionStudioModal
+            open={jevStudioOpen}
+            onClose={() => setJevStudioOpen(false)}
+            onOpenSettings={() => handleOpenSettings(1)}
           />
         )}
       </Suspense>

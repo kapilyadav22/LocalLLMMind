@@ -148,7 +148,7 @@ function chatReducer(state, action) {
     }
 
     case 'FINISH_LAST_MESSAGE': {
-      const { conversationId, metrics, content } = action.payload;
+      const { conversationId, metrics, content, webSources, knowledgeCitations } = action.payload;
       return {
         ...state,
         conversations: state.conversations.map((c) =>
@@ -166,6 +166,8 @@ function chatReducer(state, action) {
                     ...m,
                     content: finalContent,
                     ...(metrics ? { metrics } : {}),
+                    ...(webSources ? { webSources } : {}),
+                    ...(knowledgeCitations ? { knowledgeCitations } : {}),
                     versions,
                     activeVersionIndex: versions.length - 1,
                   };
